@@ -349,7 +349,26 @@
   .mathcheck.low  { background: var(--good-soft); color: var(--good); }
   .mathcheck.na   { background: var(--surface-2); color: var(--muted); }
 
-  .followup { margin-top: 12px; width: 100%; }
+  .followup, .checkbtn { margin-top: 12px; width: 100%; }
+  .checkbtn { margin-top: 8px; }
+
+  .statusrow { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; flex-wrap: wrap; }
+  .statusrow select { width: auto; font-size: .82rem; padding: 5px 8px; }
+  .statusrow .sentdate { font-size: .78rem; color: var(--muted); }
+  .stale { font-size: .78rem; color: var(--warn); font-weight: 600; }
+
+  .flags { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .flagline { font-size: .85rem; border-radius: 8px; padding: 8px 12px; background: var(--warn-soft); color: var(--warn); }
+  .flagline.severe { background: var(--bad-soft); color: var(--bad); font-weight: 600; }
+
+  .checklist label { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px dashed var(--line); font-size: .92rem; cursor: pointer; }
+  .checklist input { width: auto; margin-top: 3px; }
+
+  .quotetabs { display: flex; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+  .quotetabs button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .genreq { color: var(--bad); }
+  .helper { font-size: .78rem; color: var(--muted); margin-top: 4px; max-width: 56ch; }
 
   .empty {
     text-align: center;
@@ -370,11 +389,12 @@
   <p class="tagline">Type in each dealer's numbers as their emails come in. The ledger figures out what every offer <em>really</em> costs per month, checks the dealer's math, and lines the deals up side by side.</p>
 
   <details class="howto">
-    <summary>How to use this (three steps)</summary>
+    <summary>How to use this (four steps)</summary>
     <ol>
-      <li><strong>Send your email</strong> to each dealer. It asks for exactly the numbers this page needs.</li>
-      <li><strong>When a quote arrives, click "Paste a dealer's email"</strong> and paste the whole reply — the ledger pulls out every number it can find, and you check them before anything is saved. (You can also click "Add a deal" and type the numbers in yourself.) If a dealer left things out, open their card and click <strong>"Draft a follow-up email"</strong> — it writes the request for exactly what's missing.</li>
-      <li><strong>Compare the big green number</strong> — "True monthly cost." It folds in the amount due at signing, the disposition fee, and your remaining VW payments, so it's the one fair number to compare across dealers. Lowest wins.</li>
+      <li><strong>Click "Start a new dealer."</strong> Fill in the dealer and the exact car — the ledger writes the quote-request email and starts a tracking card. Copy the email, send it from your own mail, then mark the card "Sent". If a dealer goes quiet for more than 5 days, the card will say so — silence is information too.</li>
+      <li><strong>When the reply arrives, click "Paste a dealer's reply"</strong> and paste the whole email — the ledger pulls out every number it can find, and you check them before anything is saved. If a dealer left things out, open their card and click <strong>"Draft a follow-up email"</strong> — it writes the request for exactly what's missing.</li>
+      <li><strong>Compare the big green number</strong> — "True monthly cost." It folds in the amount due at signing, the disposition fee, and any remaining VW payments you cover, so it's the one fair number to compare across dealers — even between a 36-month and a 39-month quote. Lowest wins.</li>
+      <li><strong>Picked a winner?</strong> Open its "Pre-signing checklist" and take it to the dealership — it lists the things that get agreed by email and then quietly differ on the contract.</li>
     </ol>
   </details>
 
@@ -389,16 +409,17 @@
   </div>
 
   <div class="toolbar">
-    <button class="primary" id="addBtn">+ Add a deal</button>
-    <button id="pasteBtn">Paste a dealer's email</button>
+    <button class="primary" id="newDealerBtn">Start a new dealer</button>
+    <button id="pasteBtn">Paste a dealer's reply</button>
+    <button id="addBtn">Add a deal by hand</button>
     <button id="exampleBtn">See an example</button>
   </div>
 
   <div class="deals" id="deals"></div>
 
   <div class="empty" id="empty">
-    <p>No deals yet. When the first dealer replies to your email, click <strong>“Add a deal”</strong> and copy their numbers in — or peek at an example first.</p>
-    <button class="primary" id="emptyAdd">+ Add a deal</button>
+    <p>No dealers yet. Click <strong>“Start a new dealer”</strong> — it writes the quote-request email for you and starts a tracking card. Or peek at an example first.</p>
+    <button class="primary" id="emptyAdd">Start a new dealer</button>
   </div>
 
   <footer class="note">
@@ -422,16 +443,16 @@
     <div id="pasteStep2" hidden>
       <h2>Check what it found</h2>
       <p class="sub">Compare these against the dealer's email and fix anything wrong or missing. Itemized lists (fees, incentives) are worth a second look — the ledger may have caught only the first line.</p>
+      <div class="quotetabs" id="quoteTabs" hidden></div>
       <div class="foundnote" id="foundNote"></div>
       <div class="pgrid" id="parseGrid"></div>
       <div class="field" style="margin-top: 10px">
-        <label for="parseVwmode">How the email says your 3 VW payments are handled</label>
+        <label for="parseVwmode">How the email says your remaining VW payments are handled</label>
         <select id="parseVwmode">
           <option value="unknown">It doesn't say</option>
           <option value="covered">Dealer / VW covers them (pull-ahead or payoff)</option>
           <option value="rolled">Rolled into the new lease</option>
           <option value="ipay">I pay them myself</option>
-          <option value="wait">Delivery at my lease end</option>
         </select>
       </div>
       <div class="field">
@@ -460,6 +481,53 @@
   </div>
 </div>
 
+<div class="overlay" id="genModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="genTitle">
+    <div id="genStep1">
+      <h2 id="genTitle">Start a new dealer</h2>
+      <p class="sub">Fill in the dealer and the exact car. The ledger writes the quote-request email and starts a tracking card for this dealer + vehicle.</p>
+      <div class="pgrid">
+        <div class="field"><label for="g_dealer">Dealer name <span class="genreq">*</span></label><input type="text" id="g_dealer"></div>
+        <div class="field"><label for="g_sales">Salesperson (optional)</label><input type="text" id="g_sales"></div>
+        <div class="field"><label for="g_semail">Salesperson email (optional)</label><input type="text" id="g_semail"></div>
+        <div class="field"><label for="g_stock">Stock # (optional)</label><input type="text" id="g_stock"></div>
+        <div class="field"><label for="g_vyear">Year <span class="genreq">*</span></label><input type="text" id="g_vyear" placeholder="2026"></div>
+        <div class="field"><label for="g_vmake">Make <span class="genreq">*</span></label><input type="text" id="g_vmake"></div>
+        <div class="field"><label for="g_vmodel">Model <span class="genreq">*</span></label><input type="text" id="g_vmodel"></div>
+        <div class="field"><label for="g_vtrim">Trim <span class="genreq">*</span></label><input type="text" id="g_vtrim"></div>
+      </div>
+      <div class="field"><label for="g_notes">Anything else to add? (optional)</label>
+        <textarea id="g_notes"></textarea>
+        <div class="helper">Use this for context — what you discussed, a second vehicle, timing. Don't restate anything about price, down payment, or terms; the email already handles those.</div>
+      </div>
+      <div class="hint warnhint" id="genErr" hidden></div>
+      <div class="actions">
+        <button class="primary" id="genCreate">Write the email</button>
+        <button id="genCancel">Cancel</button>
+      </div>
+    </div>
+    <div id="genStep2" hidden>
+      <h2>Your email — edit anything, then copy</h2>
+      <p class="sub">A tracking card has been created for this dealer. Send the email from your own mail, then mark the card "Sent".</p>
+      <textarea class="big" id="genText" style="min-height: 340px"></textarea>
+      <div class="actions">
+        <button class="primary" id="genCopy">Copy email</button>
+        <span class="copymsg" id="genCopyMsg" hidden>Copied ✓</span>
+        <button id="genDone">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="checkModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="checkTitle">
+    <h2 id="checkTitle">Pre-signing checklist</h2>
+    <p class="sub" id="checkSub"></p>
+    <div class="checklist" id="checkList"></div>
+    <div class="actions"><button class="primary" id="checkClose">Done</button></div>
+  </div>
+</div>
+
 <script>
 (function () {
   'use strict';
@@ -479,6 +547,22 @@
     residual: 'residual', mf: 'money factor', incentives: 'incentives', fees: 'fees',
     tax: 'tax', das: 'due at signing', monthly: 'monthly payment', disposition: 'disposition fee'
   };
+  // a quote missing any of these can't be verified, so it isn't ranked
+  var CORE = ['msrp', 'selling', 'term', 'residual', 'mf', 'das', 'monthly'];
+
+  // Lee's VW lease terminates December 18, 2026 — everything date-driven
+  // derives from this, never a hardcoded payment count
+  var LEASE_END = new Date(2026, 11, 18);
+  var VW_PAYMENT = 390;
+  function monthsRemaining() {
+    var now = new Date();
+    var m = (LEASE_END.getFullYear() - now.getFullYear()) * 12 +
+            (LEASE_END.getMonth() - now.getMonth());
+    if (now.getDate() > LEASE_END.getDate()) m -= 1; // round DOWN — never overstate runway
+    return Math.max(0, m);
+  }
+  function vwPayCount() { return monthsRemaining(); }
+  function vwPayTotal() { return vwPayCount() * VW_PAYMENT; }
 
   function num(v) {
     if (v === null || v === undefined) return NaN;
@@ -499,8 +583,13 @@
   }
 
   function vwCost(d) {
+    if (d.delivery === 'leaseend') return 0; // nothing left to cover at lease end
     if (d.vwmode === 'ipay') { var a = num(d.vwamt); return isFinite(a) ? a : 0; }
     return 0;
+  }
+  // is the remaining-VW-payments question even relevant for this card?
+  function vwRelevant(d) {
+    return d.delivery !== 'leaseend' && vwPayCount() > 0;
   }
 
   function compute(d) {
@@ -511,6 +600,14 @@
     var rv = residualDollars(d);
 
     out.filled = REQUIRED.filter(function (k) { return String(d[k] || '').trim() !== ''; }).length;
+    out.incomplete = CORE.some(function (k) { return String(d[k] || '').trim() === ''; });
+
+    // due at signing should be exactly first payment + fees per Lee's structure;
+    // anything above that is a hidden down payment
+    var feesN = num(d.fees);
+    if (isFinite(das) && isFinite(monthly) && isFinite(feesN)) {
+      out.hiddenDown = das - (monthly + feesN);
+    }
 
     if (isFinite(das) && isFinite(monthly) && isFinite(term) && term > 0) {
       var total = das + monthly * Math.max(term - 1, 0) + (isFinite(disp) ? disp : 0) + vwCost(d);
@@ -561,6 +658,11 @@
         d.vmodel = String(d.vehicle).replace(/\b(19|20)\d{2}\b/, '').trim();
         delete d.vehicle;
       }
+      // "delivery at lease end" used to be a payment-handling mode;
+      // it's a delivery timing now
+      if (d.vwmode === 'wait') { d.delivery = 'leaseend'; d.vwmode = 'unknown'; }
+      if (!d.status) d.status = 'draft';
+      if (!d.delivery) d.delivery = 'now';
     });
   }
 
@@ -581,7 +683,16 @@
     var h = '';
     h += '<div class="card-head"><input class="dealname" data-k="dealer" placeholder="Dealer name" aria-label="Dealer name">';
     h += '<button class="del" title="Remove this deal" aria-label="Remove this deal">✕</button></div>';
+    h += '<div class="statusrow"><select data-k="status" aria-label="Card status">' +
+         '<option value="draft">Draft — email not sent</option>' +
+         '<option value="sent">Sent — awaiting reply</option>' +
+         '<option value="parsed">Reply received</option>' +
+         '</select><span class="sentdate"></span><span class="stale" hidden></span></div>';
     h += fieldHTML('sales', 'Salesperson', { ph: 'who signed the email' });
+    h += '<div class="row2">';
+    h += fieldHTML('semail', 'Salesperson email', {});
+    h += fieldHTML('stock', 'Stock #', {});
+    h += '</div>';
     h += '<div class="group-label">Vehicle</div><div class="row2">';
     h += fieldHTML('vyear', 'Year', { ph: '2026' });
     h += fieldHTML('vmake', 'Make', { ph: 'Hyundai' });
@@ -618,15 +729,21 @@
     h += '</div>';
     h += fieldHTML('disposition', 'Disposition fee at lease end', { money: true, ph: '395' });
 
-    h += '<div class="group-label">Your 3 remaining VW payments</div>';
+    h += '<div class="group-label">Delivery</div>';
+    h += '<div class="field"><select data-k="delivery" aria-label="Delivery timing">' +
+         '<option value="now">Immediate — before my lease ends</option>' +
+         '<option value="leaseend">At my lease end (Dec 18, 2026)</option>' +
+         '</select></div>';
+    h += '<div class="vwgroup">';
+    h += '<div class="group-label">Your remaining VW payments (' + vwPayCount() + ' left ≈ ' + usd(vwPayTotal()) + ')</div>';
     h += '<div class="field"><select data-k="vwmode" aria-label="How the remaining VW payments are handled">' +
          '<option value="unknown">Dealer hasn’t said yet</option>' +
          '<option value="covered">Dealer / VW covers them (pull-ahead or payoff)</option>' +
          '<option value="rolled">Rolled into the new lease</option>' +
          '<option value="ipay">I pay them myself</option>' +
-         '<option value="wait">Delivery at my lease end (nothing owed twice)</option>' +
          '</select></div>';
-    h += '<div class="field vwamt-field" hidden>' + fieldHTML('vwamt', 'Amount ($)', { money: true, ph: '1,170' }) + '</div>';
+    h += '<div class="field vwamt-field" hidden>' + fieldHTML('vwamt', 'Amount ($)', { money: true, ph: vwPayTotal().toLocaleString('en-US') }) + '</div>';
+    h += '</div>';
 
     h += '<div class="field"><label>Notes (plate transfer confirmed? expiration date of offer?)</label>' +
          '<textarea data-k="notes"></textarea></div>';
@@ -644,7 +761,9 @@
          '<li><span>Residual</span><span data-f="rv">—</span></li>' +
          '</ul>' +
          '<div class="mathcheck na">Math check: fill in selling price, residual, money factor, term and payment.</div>' +
+         '<div class="flags"></div>' +
          '<button class="followup" type="button">Draft a follow-up email</button>' +
+         '<button class="checkbtn" type="button">Pre-signing checklist</button>' +
          '</div>';
     return h;
   }
@@ -665,12 +784,16 @@
       });
       if (inp.tagName === 'SELECT') inp.addEventListener('change', function () {
         d[k] = inp.value;
-        // pre-fill Lee's ~$1,170 the moment a mode that needs an amount is picked
+        // pre-fill her actual remaining-payments total the moment a mode
+        // that needs an amount is picked — a blank would count as $0
         if (k === 'vwmode' && (inp.value === 'ipay' || inp.value === 'rolled') &&
             String(d.vwamt || '').trim() === '') {
-          d.vwamt = '1,170';
+          d.vwamt = vwPayTotal().toLocaleString('en-US');
           var amtInp = el.querySelector('[data-k="vwamt"]');
           if (amtInp) amtInp.value = d.vwamt;
+        }
+        if (k === 'status' && inp.value === 'sent' && !d.sentDate) {
+          d.sentDate = new Date().toISOString().slice(0, 10);
         }
         refresh(d, el); save();
       });
@@ -678,6 +801,10 @@
 
     el.querySelector('.followup').addEventListener('click', function () {
       openEmailModal(d);
+    });
+
+    el.querySelector('.checkbtn').addEventListener('click', function () {
+      openChecklist(d);
     });
 
     el.querySelector('.del').addEventListener('click', function () {
@@ -697,6 +824,23 @@
   function refresh(d, el) {
     var c = compute(d);
 
+    // status row: sent date + gentle nudge after 5 quiet days
+    var sentEl = el.querySelector('.sentdate');
+    var staleEl = el.querySelector('.stale');
+    sentEl.textContent = '';
+    staleEl.hidden = true;
+    if (d.status === 'sent' && d.sentDate) {
+      sentEl.textContent = 'sent ' + d.sentDate;
+      var days = Math.floor((Date.now() - new Date(d.sentDate + 'T00:00:00')) / 864e5);
+      if (days > 5) {
+        staleEl.hidden = false;
+        staleEl.textContent = '⚑ No reply in ' + days + ' days — silence is information too';
+      }
+    }
+
+    // the remaining-payments question only exists for early delivery
+    el.querySelector('.vwgroup').hidden = !vwRelevant(d);
+
     // VW amount field visibility
     var showAmt = d.vwmode === 'ipay' || d.vwmode === 'rolled';
     el.querySelector('.vwamt-field').hidden = !showAmt;
@@ -709,7 +853,7 @@
     fill.classList.toggle('bad', c.filled < 12);
     var missLabels = REQUIRED.filter(function (k) { return String(d[k] || '').trim() === ''; })
       .map(function (k) { return SHORT_LABELS[k]; });
-    if (!d.vwmode || d.vwmode === 'unknown') missLabels.push('how your VW payments are handled');
+    if (vwRelevant(d) && (!d.vwmode || d.vwmode === 'unknown')) missLabels.push('how your VW payments are handled');
     var missEl = el.querySelector('.stillmissing');
     missEl.hidden = missLabels.length === 0;
     missEl.textContent = missLabels.length ? '⚑ Still missing: ' + missLabels.join(', ') : '';
@@ -718,7 +862,8 @@
     el.querySelector('.bigcost .num').textContent = isFinite(c.eff) ? usd(c.eff) : '—';
     var slot = el.querySelector('.pillslot');
     var v = verdict(c.effPct);
-    if (v) slot.innerHTML = '<span class="pill ' + v.cls + '">' + v.label + ' · ' + c.effPct.toFixed(2) + '% of MSRP per month</span>';
+    if (c.incomplete) slot.innerHTML = '<span class="pill na">Incomplete — not ranked until the core numbers are in</span>';
+    else if (v) slot.innerHTML = '<span class="pill ' + v.cls + '">' + v.label + ' · ' + c.effPct.toFixed(2) + '% of MSRP per month</span>';
     else if (isFinite(c.eff)) slot.innerHTML = '<span class="pill na">Add MSRP to rate this deal</span>';
     else slot.innerHTML = '<span class="pill na">Needs: due at signing, monthly payment, term</span>';
 
@@ -734,7 +879,14 @@
     var mfHint = el.querySelector('[data-hint="mf"]');
     var mf = num(d.mf);
     if (isFinite(mf) && mf >= 0.02) { mfHint.textContent = 'Money factors look like 0.00125 — double-check this one.'; mfHint.className = 'hint warnhint'; }
+    else if (d.mfsrc === 'apr' && isFinite(mf)) { mfHint.textContent = 'Dealer quoted an APR — converted to a money factor (APR ÷ 2400).'; mfHint.className = 'hint'; }
     else { mfHint.textContent = ''; mfHint.className = 'hint'; }
+
+    // monthly-payment tax note
+    var moHint = el.querySelector('[data-hint="monthly"]');
+    if (d.taxmode === 'plus') { moHint.textContent = 'Dealer quoted this "plus tax."'; moHint.className = 'hint warnhint'; }
+    else if (d.taxmode === 'included') { moHint.textContent = 'Dealer says tax is included.'; moHint.className = 'hint'; }
+    else { moHint.textContent = ''; moHint.className = 'hint'; }
 
     // math check
     var mc = el.querySelector('.mathcheck');
@@ -754,6 +906,34 @@
       mc.textContent = 'Math check: fill in selling price, residual, money factor, term and payment, and the ledger will verify the dealer’s arithmetic.';
     }
 
+    // plain-language flags
+    var flags = [];
+    if (isFinite(c.hiddenDown) && c.hiddenDown > 25) {
+      flags.push({
+        severe: true,
+        text: '⚑ Hidden down payment: due at signing is ' + usd(c.hiddenDown) +
+          ' more than first payment + fees' +
+          (d.zeroclaim ? ' — and the email claims "$0 down"' : '') +
+          '. Ask exactly what the extra covers; you asked for $0 down.'
+      });
+    }
+    var mi = num(d.miles);
+    if (isFinite(mi) && mi >= 10000) {
+      flags.push({ text: 'Quoted at ' + mi.toLocaleString('en-US') + ' miles/year. You asked for the lowest tier — a 7,500-mile quote should be cheaper.' });
+    }
+    if (String(d.mf || '').trim() && d.mfbase !== 'yes') {
+      flags.push({ text: 'The money factor wasn’t labeled as the base (buy) rate. Ask them to confirm in writing that there’s no markup.' });
+    }
+    if (d.vwvague && vwRelevant(d)) {
+      flags.push({ text: 'The dealer was vague about your remaining VW payments ("we’ll take care of it"). Get the mechanism in writing: pull-ahead/conquest, dealer-paid payoff, or the amount capitalized.' });
+    }
+    if (d.taxmode === 'plus') {
+      flags.push({ text: 'The payment was quoted "plus tax." Your structure capitalizes Vermont tax into the lease — ask for the payment with tax capitalized.' });
+    }
+    el.querySelector('.flags').innerHTML = flags.map(function (f) {
+      return '<div class="flagline' + (f.severe ? ' severe' : '') + '">' + f.text + '</div>';
+    }).join('');
+
     renderSummary();
   }
 
@@ -772,7 +952,7 @@
       case 'monthly': n = num(r.d.monthly); return isFinite(n) ? n : null;
       case 'das': n = num(r.d.das); return isFinite(n) ? n : null;
       case 'term': n = num(r.d.term); return isFinite(n) ? n : null;
-      case 'eff': return isFinite(r.c.eff) ? r.c.eff : null;
+      case 'eff': return (!r.c.incomplete && isFinite(r.c.eff)) ? r.c.eff : null;
       case 'filled': return r.c.filled;
     }
     return null;
@@ -785,7 +965,8 @@
     box.hidden = false;
 
     var rows = deals.map(function (d) { return { d: d, c: compute(d) }; });
-    var withEff = rows.filter(function (r) { return isFinite(r.c.eff); });
+    // only complete, verifiable quotes compete for the ranking
+    var withEff = rows.filter(function (r) { return !r.c.incomplete && isFinite(r.c.eff); });
     // a lone deal doesn't get a trophy for showing up
     var best = withEff.length > 1
       ? withEff.reduce(function (a, b) { return b.c.eff < a.c.eff ? b : a; })
@@ -816,7 +997,7 @@
         '<td>' + usd(num(d.monthly)) + '</td>' +
         '<td>' + usd(num(d.das)) + '</td>' +
         '<td>' + (isFinite(num(d.term)) ? num(d.term) + ' mo' : '—') + '</td>' +
-        '<td class="eff">' + (isFinite(c.eff) ? usd(c.eff) : '—') + '</td>' +
+        '<td class="eff">' + ((!c.incomplete && isFinite(c.eff)) ? usd(c.eff) : '—') + '</td>' +
         '<td>' + (c.filled < 12 ? '<span class="shortflag">⚑ ' + c.filled + '/12</span>' : c.filled + '/12 ✓') + '</td>' +
         '</tr>';
     }).join('');
@@ -841,6 +1022,8 @@
     var d = data || {};
     d.id = uid++;
     if (!d.vwmode) d.vwmode = 'unknown';
+    if (!d.status) d.status = 'draft';
+    if (!d.delivery) d.delivery = 'now';
     deals.push(d);
     dealsEl.appendChild(buildCard(d));
     save();
@@ -853,17 +1036,17 @@
   }
 
   document.getElementById('addBtn').addEventListener('click', function () { addDeal(); });
-  document.getElementById('emptyAdd').addEventListener('click', function () { addDeal(); });
+  document.getElementById('emptyAdd').addEventListener('click', function () { openGenerator(); });
   document.getElementById('exampleBtn').addEventListener('click', function () {
     addDeal({
       dealer: 'Example Motors (sample)',
       sales: 'Sam Rivera',
       vyear: '2026', vmake: 'Hyundai', vmodel: 'IONIQ 5', vtrim: 'SEL AWD',
       msrp: '52,000', selling: '47,500', term: '36', miles: '7,500',
-      residual: '55', mf: '0.00150', bank: 'Hyundai Motor Finance',
+      residual: '55', mf: '0.00150', mfbase: 'yes', bank: 'Hyundai Motor Finance',
       incentives: '9,500', fees: '1,320', tax: '2,850',
       das: '1,765', monthly: '445', disposition: '400',
-      vwmode: 'covered',
+      vwmode: 'covered', status: 'parsed',
       notes: 'Sample numbers so you can see how the ledger works — delete this card any time.'
     });
   });
@@ -893,14 +1076,71 @@
     'U.S. Bank', 'US Bank', 'Santander', 'BMW Financial', 'Mercedes-Benz Financial',
     'Volvo Car Financial', 'Bank of America'];
 
+  // strip things that look like money but aren't: VINs, phone numbers,
+  // stock numbers, dates, "ST 05602"-style ZIPs
+  function scrubLine(s) {
+    return String(s)
+      .replace(/\b[A-HJ-NPR-Z0-9]{17}\b/g, ' ')
+      .replace(/\(?\b\d{3}\)?[ .-]\d{3}[.-]\d{4}\b/g, ' ')
+      .replace(/\bstock\s*(?:#|no\.?|number)?\s*:?\s*[A-Za-z]*\d[A-Za-z0-9-]*/gi, ' stock ')
+      .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, ' ')
+      .replace(/\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/g, ' ');
+  }
+
+  // numbers written as words: "forty-four thousand two hundred"
+  var W_SMALL = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+    eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
+    fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+  var W_TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70,
+    eighty: 80, ninety: 90 };
+  function wordsToNumber(phrase) {
+    var toks = phrase.toLowerCase().split(/[\s-]+/).filter(Boolean);
+    var total = 0, cur = 0, seen = false;
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i];
+      if (t === 'and') continue;
+      if (W_SMALL[t] !== undefined) { cur += W_SMALL[t]; seen = true; }
+      else if (W_TENS[t] !== undefined) { cur += W_TENS[t]; seen = true; }
+      else if (t === 'hundred') { cur = (cur || 1) * 100; seen = true; }
+      else if (t === 'thousand') { total += (cur || 1) * 1000; cur = 0; seen = true; }
+      else return null;
+    }
+    return seen ? total + cur : null;
+  }
+  function wordMoneyIn(s) {
+    var toks = s.toLowerCase().replace(/[^a-z\s-]/g, ' ').split(/\s+/);
+    var best = null, run = [], big = false;
+    var isNumWord = function (t) {
+      return t.split('-').every(function (p) {
+        return W_SMALL[p] !== undefined || W_TENS[p] !== undefined ||
+          p === 'hundred' || p === 'thousand' || p === 'and';
+      });
+    };
+    var flush = function () {
+      if (big) {
+        var n = wordsToNumber(run.join(' '));
+        if (n && n >= 100 && (best === null || n > best)) best = n;
+      }
+      run = []; big = false;
+    };
+    toks.forEach(function (t) {
+      if (t && isNumWord(t)) { run.push(t); if (/hundred|thousand/.test(t)) big = true; }
+      else flush();
+    });
+    flush();
+    return best !== null ? String(best) : '';
+  }
+
   function moneyOn(line) {
-    var clean = function (s) { return s.replace(/[.,]+$/, ''); };
-    var m = line.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
+    var s = scrubLine(line);
+    var clean = function (x) { return x.replace(/[.,]+$/, ''); };
+    var m = s.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
     if (m) return clean(m[1]);
-    m = line.match(/\b(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?)\b/);
+    m = s.match(/\b(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?)\b/);
     if (m) return clean(m[1]);
-    m = line.match(/:\s*(\d{3,6}(?:\.\d{1,2})?)\b/);
-    return m ? clean(m[1]) : '';
+    m = s.match(/:\s*(\d{3,6}(?:\.\d{1,2})?)\b/);
+    if (m) return clean(m[1]);
+    return wordMoneyIn(s);
   }
   // first money AFTER the keyword; falls back to anywhere on the line
   function moneyAfter(line, kwRe) {
@@ -914,6 +1154,39 @@
     var m = line.match(kwRe);
     if (!m) return '';
     return moneyOn(line.slice(m.index + m[0].length));
+  }
+
+  // cut the quoted thread — Lee's own email sits below the reply and is full
+  // of numbers ($390, 30,000 miles, a VIN) that would poison the parse
+  function truncateThread(text) {
+    var lines = String(text).split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i].trim();
+      if (/^>/.test(l) || /^On .{1,120}wrote:$/i.test(l) ||
+          /^-{2,}\s*Original Message\s*-{2,}$/i.test(l)) {
+        return lines.slice(0, i).join('\n');
+      }
+    }
+    return String(text);
+  }
+
+  // one email, several quotes ("Option 1: 36 months… Option 2: 39 months…")
+  // → split into blocks, each sharing the email's header (vehicle, names)
+  function splitQuotes(text) {
+    var lines = String(text).split(/\r?\n/);
+    var idxs = [];
+    lines.forEach(function (ln, i) {
+      if (/^\s*(option|quote)\s*(?:[#:]\s*)?(?:\d|[ab]\b|one|two|three)/i.test(ln) ||
+          /^\s*\d{2}\s*-?\s*month\s+(option|term|quote|lease)/i.test(ln)) idxs.push(i);
+    });
+    if (idxs.length < 2) return [String(text)];
+    var header = lines.slice(0, idxs[0]).join('\n');
+    var blocks = [];
+    for (var i = 0; i < idxs.length; i++) {
+      var end = i + 1 < idxs.length ? idxs[i + 1] : lines.length;
+      blocks.push(header + '\n' + lines.slice(idxs[i], end).join('\n'));
+    }
+    return blocks;
   }
 
   function parseQuote(text) {
@@ -936,9 +1209,26 @@
         else if (rp) put('residual', rp[1]);
       }
 
-      if (/money\s*factor|\bmf\b|buy\s*rate|base\s*rate/.test(l)) {
+      if (/money\s*factor|\bmf\b|buy\s*rate|base\s*rate|\bapr\b/.test(l)) {
         var mf = line.match(/(0?\.\d{4,6})/);
-        if (mf) put('mf', mf[1]);
+        if (mf) {
+          put('mf', mf[1]);
+          if (!v.mfsrc) v.mfsrc = 'mf';
+        } else {
+          // dealer gave a rate instead: MF = APR / 2400 — take the number
+          // AFTER the keyword, not the line's first % (could be the residual)
+          var kwM = l.match(/money\s*factor|\bmf\b|buy\s*rate|base\s*rate|\bapr\b/);
+          var afterKw = line.slice(kwM.index + kwM[0].length);
+          var ap = afterKw.match(/^\D{0,15}([\d.]+)\s*%/) || afterKw.match(/^\D{0,15}([\d.]+)/);
+          if (ap) {
+            var aprN = parseFloat(ap[1]);
+            if (aprN > 0 && aprN < 25 && !v.mf) {
+              v.mf = (aprN / 2400).toFixed(6).replace(/0+$/, '');
+              v.mfsrc = 'apr';
+            }
+          }
+        }
+        if (v.mf && /base|buy/.test(l)) v.mfbase = 'yes';
       }
 
       if (!v.term) {
@@ -986,6 +1276,10 @@
           if (mm) v.monthly = mm;
         }
       }
+
+      // was the payment quoted plus tax, or with tax in it?
+      if (/plus\s+tax|\+\s*tax|excl\w*\s+tax/.test(l)) v.taxmode = 'plus';
+      else if (/includ\w*\s+tax|tax\s+included/.test(l)) v.taxmode = 'included';
     });
 
     if (!v.fees) {
@@ -1008,10 +1302,27 @@
     }
 
     if (/pull[- ]?ahead/.test(fl) ||
-        /(cover|waive|pay(?:\s?off)?)[^.]{0,50}(remaining|last|final|3)[^.]{0,25}payment/.test(fl)) {
+        /(cover|waive|pay(?:\s?off)?)[^.]{0,50}(remaining|last|final|\d)[^.]{0,25}payment/.test(fl)) {
       v.vwmode = 'covered';
     } else if (/roll(ed|ing)?[^.]{0,30}(in|into)[^.]{0,20}(new\s)?lease/.test(fl)) {
       v.vwmode = 'rolled';
+    } else if (/(we[’']ll|we will|don[’']t worry|no worries)[^.]{0,40}(take care|handle|cover)|take care of (it|that|those|your payments)/.test(fl)) {
+      v.vwvague = '1'; // named no mechanism — flag it
+    }
+
+    if (/lease[- ]end delivery|deliver\w*[^.]{0,25}at[^.]{0,15}lease end|quote\w*[^.]{0,30}for delivery at[^.]{0,15}lease end|when (your|the) lease ends/.test(fl)) {
+      v.delivery = 'leaseend';
+    }
+    if (/\$0 down|zero down|no money down|nothing down|sign[- ]and[- ]drive/.test(fl)) {
+      v.zeroclaim = '1';
+    }
+
+    var stockM = full.match(/\bstock\s*(?:#|no\.?|number)?\s*:?\s*([A-Za-z]*\d[A-Za-z0-9-]{1,11})/i);
+    if (stockM) v.stock = stockM[1];
+    var emailM = full.match(/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g);
+    if (emailM) {
+      var them = emailM.filter(function (e) { return !/bonamico|lee\b/i.test(e); });
+      if (them.length) v.semail = them[0];
     }
 
     var ym = full.match(/\b20(2[3-9]|3[0-3])\b/);
@@ -1035,6 +1346,9 @@
         .filter(Boolean);
       if (!toks.length || !/[A-Za-z0-9]/.test(toks[0])) return null;
       if (STOPS.indexOf(toks[0].toLowerCase()) !== -1) return null;
+      // real model names carry a capital or a digit (IONIQ 5, EV6, ID.4, bZ4X);
+      // "your VW payments" would otherwise read as model "payments"
+      if (!/[A-Z0-9]/.test(toks[0])) return null;
       var modelT = [], trimT = [], inTrim = false;
       for (var ti = 0; ti < toks.length; ti++) {
         var tok = toks[ti];
@@ -1059,6 +1373,7 @@
         if (!new RegExp('\\b' + MAKES[mk].replace('-', '\\-') + '\\b', 'i').test(lines[li])) continue;
         if (!v.vmake) v.vmake = MAKES[mk];
         if (FINANCEY.test(lines[li])) continue; // bank line, not the car
+        if (/payment|payoff|pull[- ]?ahead|remaining/i.test(lines[li])) continue; // her old VW, not the car
         // a line can mention the make twice ("Burlington Kia … the 2026 Kia EV6");
         // try each occurrence, preferring the one right after the model year
         var best = null, m2;
@@ -1083,7 +1398,7 @@
     var capWord = "[A-Z][\\w'&.-]*";
     var capSeq = capWord + "(?:[ \\t]+" + capWord + "){0,3}";
     var dealerRes = [
-      new RegExp('\\b(' + capSeq + '[ \\t]+(?:Motors?|Auto[ \\t]?Group|Automotive|Auto[ \\t]?Mall|Auto[ \\t]?Center|Dealerships?|Autos?|Cars))\\b'),
+      new RegExp('\\b(' + capSeq + '[ \\t]+(?:Motors?|Auto[ \\t]?Group|Automotive|Auto[ \\t]?Mall|Auto[ \\t]?Center|Dealerships?|Autos?|Cars))\\b(?![ \\t]+(?:Financ|Credit|Acceptance))'),
       new RegExp('\\b((?:' + capWord + '[ \\t]+){0,2}(?:' + makesAlt + ')[ \\t]+of[ \\t]+[A-Z][A-Za-z]+)\\b'),
       new RegExp('\\b(' + capSeq + '[ \\t]+(?:' + makesAlt + '))\\b')
     ];
@@ -1114,7 +1429,9 @@
 
   /* ---------- paste modal ---------- */
   var PARSE_FIELDS = [
-    ['dealer', 'Dealer name'], ['sales', 'Salesperson'], ['vyear', 'Year'], ['vmake', 'Make'],
+    ['dealer', 'Dealer name'], ['sales', 'Salesperson'],
+    ['semail', 'Salesperson email'], ['stock', 'Stock #'],
+    ['vyear', 'Year'], ['vmake', 'Make'],
     ['vmodel', 'Model'], ['vtrim', 'Trim'],
     ['msrp', 'MSRP ($)'], ['selling', 'Selling price ($)'],
     ['term', 'Term (months)'], ['miles', 'Miles per year'],
@@ -1139,33 +1456,85 @@
     document.getElementById('pasteText').focus();
   });
 
-  document.getElementById('parseBtn').addEventListener('click', function () {
-    var parsed = parseQuote(document.getElementById('pasteText').value);
-    var grid = document.getElementById('parseGrid');
-    grid.innerHTML = PARSE_FIELDS.map(function (f) {
+  var quoteEdits = [], quoteIdx = 0;
+
+  function buildParseGrid() {
+    document.getElementById('parseGrid').innerHTML = PARSE_FIELDS.map(function (f) {
       return '<div class="field"><label for="pf_' + f[0] + '">' + f[1] + '</label>' +
         '<input type="text" id="pf_' + f[0] + '" data-pk="' + f[0] + '"></div>';
     }).join('');
+  }
+  function loadGrid(vals) {
     PARSE_FIELDS.forEach(function (f) {
-      if (parsed[f[0]]) document.getElementById('pf_' + f[0]).value = parsed[f[0]];
+      document.getElementById('pf_' + f[0]).value = vals[f[0]] || '';
     });
-    document.getElementById('parseVwmode').value = parsed.vwmode || 'unknown';
-
-    var missing = REQUIRED.filter(function (k) { return !parsed[k]; });
+    document.getElementById('parseVwmode').value = vals.vwmode || 'unknown';
+    updateFoundNote(vals);
+  }
+  function saveGrid() {
+    var vals = quoteEdits[quoteIdx];
+    if (!vals) return;
+    PARSE_FIELDS.forEach(function (f) {
+      var x = document.getElementById('pf_' + f[0]).value.trim();
+      if (x) { vals[f[0]] = x; } else { delete vals[f[0]]; }
+    });
+    var vw = document.getElementById('parseVwmode').value;
+    if (vw !== 'unknown') { vals.vwmode = vw; } else { delete vals.vwmode; }
+  }
+  function updateFoundNote(vals) {
+    var missing = REQUIRED.filter(function (k) { return !vals[k]; });
     var found = 12 - missing.length;
     var note = document.getElementById('foundNote');
+    var multi = quoteEdits.length > 1
+      ? 'This email contains ' + quoteEdits.length + ' quotes — each becomes its own deal card. ' : '';
     if (found === 0) {
       note.className = 'foundnote warn';
-      note.textContent = 'No numbers recognized — the quote may be an attachment or image. You can still type the numbers below.';
+      note.textContent = multi + 'No numbers recognized — the quote may be an attachment or image. You can still type the numbers below.';
     } else if (missing.length) {
       note.className = 'foundnote warn';
-      note.textContent = '⚑ Found ' + found + ' of the 12 numbers — not in the email (or not recognized): ' +
+      note.textContent = '⚑ ' + multi + 'Found ' + found + ' of the 12 numbers — not in the email (or not recognized): ' +
         missing.map(function (k) { return SHORT_LABELS[k]; }).join(', ') +
         '. Check the boxes against the email; anything truly missing, demand with a follow-up email.';
     } else {
       note.className = 'foundnote';
-      note.textContent = 'Found all 12 numbers. Check each one against the email before filling the card.';
+      note.textContent = multi + 'Found all 12 numbers. Check each one against the email before filling the card.';
     }
+  }
+  function renderQuoteTabs() {
+    var tabs = document.getElementById('quoteTabs');
+    if (quoteEdits.length < 2) { tabs.hidden = true; tabs.innerHTML = ''; return; }
+    tabs.hidden = false;
+    tabs.innerHTML = quoteEdits.map(function (q, i) {
+      var label = 'Quote ' + (i + 1) + (q.term ? ' · ' + q.term + ' mo' : '');
+      return '<button type="button" data-qi="' + i + '"' + (i === quoteIdx ? ' class="active"' : '') + '>' + label + '</button>';
+    }).join('');
+    tabs.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        saveGrid();
+        quoteIdx = parseInt(b.dataset.qi, 10);
+        renderQuoteTabs();
+        loadGrid(quoteEdits[quoteIdx]);
+      });
+    });
+  }
+
+  document.getElementById('parseBtn').addEventListener('click', function () {
+    var raw = truncateThread(document.getElementById('pasteText').value);
+    var blocks = splitQuotes(raw);
+    quoteEdits = blocks.map(function (b) { return parseQuote(b); });
+    if (quoteEdits.length > 1) {
+      // identity lives in the email's header/signature, which one block may
+      // not contain — backfill from a whole-email parse
+      var whole = parseQuote(raw);
+      var IDENTITY = ['dealer', 'sales', 'semail', 'stock', 'vyear', 'vmake', 'vmodel', 'vtrim', 'bank'];
+      quoteEdits.forEach(function (q) {
+        IDENTITY.forEach(function (k) { if (!q[k] && whole[k]) q[k] = whole[k]; });
+      });
+    }
+    quoteIdx = 0;
+    buildParseGrid();
+    renderQuoteTabs();
+    loadGrid(quoteEdits[0]);
 
     var sel = document.getElementById('parseTarget');
     sel.innerHTML = '<option value="new">Start a new deal card</option>' +
@@ -1177,34 +1546,199 @@
   });
 
   document.getElementById('applyParse').addEventListener('click', function () {
-    var vals = {};
-    PARSE_FIELDS.forEach(function (f) {
-      var x = document.getElementById('pf_' + f[0]).value.trim();
-      if (x) vals[f[0]] = x;
-    });
-    var vw = document.getElementById('parseVwmode').value;
+    saveGrid();
     var targetVal = document.getElementById('parseTarget').value;
+    var target = targetVal === 'new' ? null
+      : deals.filter(function (x) { return String(x.id) === targetVal; })[0];
+    var firstCard = null;
 
-    var d;
-    if (targetVal === 'new') {
-      if (vw !== 'unknown') vals.vwmode = vw;
-      d = addDeal(vals);
-    } else {
-      d = deals.filter(function (x) { return String(x.id) === targetVal; })[0];
-      if (!d) return;
-      Object.keys(vals).forEach(function (k) { d[k] = vals[k]; });
-      if (vw !== 'unknown') d.vwmode = vw;
-      rebuildCard(d);
-      save();
-    }
+    quoteEdits.forEach(function (vals, i) {
+      var apply = Object.assign({}, vals);
+      apply.status = 'parsed';
+      var d;
+      if (target && i === quoteIdx) {
+        // the reply may quote a different car than this card tracks (section D)
+        var cardVeh = ((target.vmake || '') + ' ' + (target.vmodel || '')).trim().toLowerCase();
+        var newVeh = ((apply.vmake || '') + ' ' + (apply.vmodel || '')).trim().toLowerCase();
+        if (cardVeh && newVeh && cardVeh !== newVeh) {
+          var vehLabel = [apply.vyear, apply.vmake, apply.vmodel, apply.vtrim]
+            .filter(Boolean).join(' ');
+          if (confirm('This reply also includes a ' + vehLabel + ', which isn’t the car on this card. Add it as a separate deal from ' + (target.dealer || 'this dealer') + '?')) {
+            if (!apply.dealer) apply.dealer = target.dealer;
+            if (!apply.sales) apply.sales = target.sales;
+            d = addDeal(apply);
+            if (!firstCard) firstCard = d;
+            return;
+          }
+        }
+        Object.keys(apply).forEach(function (k) { target[k] = apply[k]; });
+        rebuildCard(target);
+        d = target;
+      } else {
+        if (target) {
+          if (!apply.dealer) apply.dealer = target.dealer;
+          if (!apply.sales) apply.sales = target.sales;
+        }
+        d = addDeal(apply);
+      }
+      if (!firstCard) firstCard = d;
+    });
+
+    save();
     pasteModal.hidden = true;
-    var card = dealsEl.querySelector('.card[data-id="' + d.id + '"]');
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    if (firstCard) {
+      var cardEl = dealsEl.querySelector('.card[data-id="' + firstCard.id + '"]');
+      if (cardEl) cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
   });
 
   document.getElementById('parseBack').addEventListener('click', function () { showPasteStep(1); });
   document.getElementById('pasteCancel').addEventListener('click', function () { pasteModal.hidden = true; });
   document.getElementById('pasteCancel2').addEventListener('click', function () { pasteModal.hidden = true; });
+
+  /* ---------- outbound email generator ---------- */
+  function genOutboundEmail(d) {
+    var months = monthsRemaining();
+    var monthsTxt = months >= 1
+      ? months + ' month' + (months === 1 ? '' : 's')
+      : 'less than a month';
+    var veh = vehicleStr(d) || 'the vehicle we discussed';
+    var stock = String(d.stock || '').trim();
+    var first = String(d.sales || '').trim().split(/\s+/)[0];
+
+    var out = [];
+    out.push('Subject: Lease quote request — ' + veh);
+    out.push('');
+    out.push('Hello' + (first ? ' ' + first : '') + ',');
+    out.push('');
+    out.push("I'm evaluating offers on different EVs from several dealers. One vehicle I'm considering is a " +
+      veh + (stock ? ', stock # ' + stock : '') + '. I have ' + monthsTxt +
+      " remaining on my current lease, so there's time to find — or possibly order — exactly what I want. " +
+      'I will move quickly on current inventory given an attractive, competitive, transparent offer. ' +
+      'To keep this efficient: all terms must be sent by email. I will not negotiate in person or by phone.');
+    var notes = String(d.gennotes || '').trim();
+    if (notes) { out.push(''); out.push(notes); }
+    out.push('');
+    out.push('CURRENT LEASE');
+    out.push('- 2023 VW ID.4, VIN 1V20NPE89PC041598');
+    out.push('- $390/month, 30,000-mile lease');
+    out.push('- Lease termination date: December 18, 2026');
+    out.push('- Current mileage ~10,000');
+    out.push('- I will not carry two vehicles at once. For immediate delivery, state in writing exactly how any remaining payments are handled: pull-ahead or conquest program, dealer-paid payoff, or the amount capitalized into the new lease. Otherwise, quote for delivery at my lease end.');
+    out.push('');
+    out.push('DEAL STRUCTURE I WANT QUOTED');
+    out.push('- $0 cap cost reduction');
+    out.push("- First month's payment and fees at signing");
+    out.push('- Vermont Purchase and Use Tax capitalized into the lease');
+    out.push('- Mileage: lowest available tier (I drive well under 10,000 miles/year)');
+    out.push('- Term: flexible — quote whichever term prices best under current programs');
+    out.push('');
+    out.push('NUMBERS I NEED, VIA EMAIL');
+    out.push('1.  MSRP');
+    out.push('2.  Selling price (before incentives)');
+    out.push('3.  Term and annual mileage');
+    out.push('4.  Residual value ($ and %)');
+    out.push('5.  Money factor — base/buy rate — and the leasing bank');
+    out.push('6.  All incentives and rebates, itemized');
+    out.push('7.  All fees, itemized: acquisition, dealer/doc, government, registration and title');
+    out.push('8.  Total tax amount capitalized');
+    out.push('9.  Total due at signing, itemized');
+    out.push('10. Monthly payment');
+    out.push('11. Disposition fee at lease end');
+    out.push('12. Treatment of my remaining VW payments, per the section above');
+    out.push('');
+    out.push('If you are quoting a factory order, please note which of the above are current-program estimates and when the numbers lock.');
+    out.push('');
+    out.push("If any of these numbers are missing, I won't be able to consider the offer. If they're all there and the deal is competitive, you'll hear back from me promptly.");
+    out.push('');
+    out.push('Thank you,');
+    out.push('Lee Aura Bonamico');
+    return out.join('\n');
+  }
+
+  var genModal = document.getElementById('genModal');
+  var GEN_FIELDS = ['dealer', 'sales', 'semail', 'stock', 'vyear', 'vmake', 'vmodel', 'vtrim'];
+
+  function openGenerator() {
+    GEN_FIELDS.forEach(function (k) { document.getElementById('g_' + k).value = ''; });
+    document.getElementById('g_notes').value = '';
+    document.getElementById('genErr').hidden = true;
+    document.getElementById('genStep1').hidden = false;
+    document.getElementById('genStep2').hidden = true;
+    genModal.hidden = false;
+    document.getElementById('g_dealer').focus();
+  }
+  document.getElementById('newDealerBtn').addEventListener('click', openGenerator);
+
+  document.getElementById('genCreate').addEventListener('click', function () {
+    var vals = {};
+    GEN_FIELDS.forEach(function (k) {
+      var x = document.getElementById('g_' + k).value.trim();
+      if (x) vals[k] = x;
+    });
+    var missing = ['dealer', 'vyear', 'vmake', 'vmodel', 'vtrim']
+      .filter(function (k) { return !vals[k]; });
+    var err = document.getElementById('genErr');
+    if (missing.length) {
+      err.hidden = false;
+      err.textContent = 'Still needed: ' + missing.map(function (k) {
+        return { dealer: 'dealer name', vyear: 'year', vmake: 'make', vmodel: 'model', vtrim: 'trim' }[k];
+      }).join(', ') + '. Trim decides MSRP and residual — quotes without it can\'t be compared.';
+      return;
+    }
+    err.hidden = true;
+    vals.gennotes = document.getElementById('g_notes').value;
+    vals.status = 'draft';
+    var d = addDeal(vals);
+    document.getElementById('genText').value = genOutboundEmail(d);
+    document.getElementById('genStep1').hidden = true;
+    document.getElementById('genStep2').hidden = false;
+  });
+
+  document.getElementById('genCopy').addEventListener('click', function () {
+    var ta = document.getElementById('genText');
+    var done = function () {
+      var m = document.getElementById('genCopyMsg');
+      m.hidden = false;
+      setTimeout(function () { m.hidden = true; }, 2500);
+    };
+    var fallback = function () { ta.select(); document.execCommand('copy'); done(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ta.value).then(done, fallback);
+    } else { fallback(); }
+  });
+  document.getElementById('genDone').addEventListener('click', function () { genModal.hidden = true; });
+  document.getElementById('genCancel').addEventListener('click', function () { genModal.hidden = true; });
+
+  /* ---------- pre-signing checklist ---------- */
+  var checkModal = document.getElementById('checkModal');
+  var CHECK_ITEMS = [
+    'Low-digit Vermont plate is TRANSFERRED to the new car — not replaced with a new plate. If the number is lost it goes back to the state pool, and that can’t be undone.',
+    'Money factor on the contract matches the quoted money factor.',
+    'Mileage tier on the contract matches the quote.',
+    'Cap cost reduction is still $0.',
+    'Disposition fee matches what was disclosed by email.',
+    'Vermont Purchase and Use Tax is capitalized into the lease, not collected in cash.'
+  ];
+  function openChecklist(d) {
+    var list = document.getElementById('checkList');
+    var st = d.checklist || {};
+    list.innerHTML = CHECK_ITEMS.map(function (t, i) {
+      return '<label><input type="checkbox" data-ci="' + i + '"' +
+        (st[i] ? ' checked' : '') + '><span>' + t + '</span></label>';
+    }).join('');
+    list.querySelectorAll('input').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        d.checklist = d.checklist || {};
+        d.checklist[inp.dataset.ci] = inp.checked;
+        save();
+      });
+    });
+    document.getElementById('checkSub').textContent =
+      (d.dealer ? d.dealer + ' — b' : 'B') + 'ring this to the dealership. These get agreed by email and then quietly differ on the contract. Check each one against the paperwork before you sign.';
+    checkModal.hidden = false;
+  }
+  document.getElementById('checkClose').addEventListener('click', function () { checkModal.hidden = true; });
 
   /* ---------- follow-up email ---------- */
   var ITEM_LABELS = {
@@ -1228,9 +1762,9 @@
     var veh = vehicleStr(d) || 'the vehicle we discussed';
     var missing = REQUIRED.filter(function (k) { return String(d[k] || '').trim() === ''; });
     if (String(d.bank || '').trim() === '') missing.push('bank');
-    var vwUnknown = !d.vwmode || d.vwmode === 'unknown';
+    var vwAsk = vwRelevant(d) && (!d.vwmode || d.vwmode === 'unknown');
     var mismatch = isFinite(c.delta) && c.delta > 12;
-    var complete = missing.length === 0 && !vwUnknown && !mismatch;
+    var complete = missing.length === 0 && !vwAsk && !mismatch;
 
     var out = [];
     out.push('Subject: ' + veh + ' lease quote — ' + (complete ? 'follow-up' : 'missing information'));
@@ -1246,9 +1780,11 @@
       missing.forEach(function (k) { out.push('- ' + ITEM_LABELS[k]); });
     }
 
-    if (vwUnknown) {
+    if (vwAsk) {
       out.push('');
-      out.push('Please also state in writing how my 3 remaining VW ID.4 payments (~$1,170 total) would be handled: pull-ahead or conquest program, dealer-paid payoff, or the amount capitalized into the new lease. Otherwise, please quote for delivery at my lease end.');
+      out.push('Please also state in writing how my remaining VW ID.4 payments (' +
+        vwPayCount() + ' × $' + VW_PAYMENT + ' ≈ ' + usd(vwPayTotal()) +
+        ' total) would be handled: pull-ahead or conquest program, dealer-paid payoff, or the amount capitalized into the new lease. Otherwise, please quote for delivery at my lease end.');
     }
 
     if (mismatch) {
@@ -1291,11 +1827,14 @@
   });
   document.getElementById('emailClose').addEventListener('click', function () { emailModal.hidden = true; });
 
-  [pasteModal, emailModal].forEach(function (ov) {
+  [pasteModal, emailModal, genModal, checkModal].forEach(function (ov) {
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.hidden = true; });
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { pasteModal.hidden = true; emailModal.hidden = true; }
+    if (e.key === 'Escape') {
+      pasteModal.hidden = true; emailModal.hidden = true;
+      genModal.hidden = true; checkModal.hidden = true;
+    }
   });
 
   /* ---------- boot ---------- */
