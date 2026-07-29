@@ -1611,8 +1611,11 @@
     out.push('');
     out.push('Hello' + (first ? ' ' + first : '') + ',');
     out.push('');
-    out.push("I'm evaluating offers on different EVs from several dealers. One vehicle I'm considering is a " +
-      veh + (stock ? ', stock # ' + stock : '') + '. I have ' + monthsTxt +
+    out.push("I'm evaluating offers on different EVs from several dealers. One vehicle I'm considering is " +
+      (stock
+        ? 'the ' + veh + ', stock # ' + stock + ', in your inventory'
+        : 'a ' + veh) +
+      '. I have ' + monthsTxt +
       " remaining on my current lease, so there's time to find — or possibly order — exactly what I want. " +
       'I will move quickly on current inventory given an attractive, competitive, transparent offer. ' +
       'To keep this efficient: all terms must be sent by email. I will not negotiate in person or by phone.');
