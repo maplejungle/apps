@@ -781,12 +781,13 @@
   function renderSummary() {
     var box = document.getElementById('summary');
     var body = document.getElementById('summaryBody');
-    if (deals.length < 2) { box.hidden = true; return; }
+    if (!deals.length) { box.hidden = true; return; }
     box.hidden = false;
 
     var rows = deals.map(function (d) { return { d: d, c: compute(d) }; });
     var withEff = rows.filter(function (r) { return isFinite(r.c.eff); });
-    var best = withEff.length
+    // a lone deal doesn't get a trophy for showing up
+    var best = withEff.length > 1
       ? withEff.reduce(function (a, b) { return b.c.eff < a.c.eff ? b : a; })
       : null;
 
