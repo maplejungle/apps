@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lee's Lease Ledger</title>
+<style>
+  :root {
+    --bg: #f6f7f4;
+    --surface: #ffffff;
+    --surface-2: #eef1ec;
+    --ink: #1d2521;
+    --muted: #5c685f;
+    --line: #d8ded6;
+    --accent: #2e5f43;          /* Vermont plate green */
+    --accent-ink: #ffffff;
+    --accent-soft: #e3ede5;
+    --good: #2e6b46;
+    --good-soft: #e0efe4;
+    --warn: #8a6215;
+    --warn-soft: #f5ecd6;
+    --bad: #9c3a2e;
+    --bad-soft: #f6e2de;
+    --shadow: 0 1px 3px rgba(29,37,33,.08), 0 4px 16px rgba(29,37,33,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151a17;
+      --surface: #1e2620;
+      --surface-2: #253028;
+      --ink: #e7ece7;
+      --muted: #9cab9f;
+      --line: #35413a;
+      --accent: #6fbe8e;
+      --accent-ink: #10241a;
+      --accent-soft: #24382c;
+      --good: #7cc79a;
+      --good-soft: #223a2c;
+      --warn: #d9b36a;
+      --warn-soft: #3a3122;
+      --bad: #e08a7c;
+      --bad-soft: #402722;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151a17;
+    --surface: #1e2620;
+    --surface-2: #253028;
+    --ink: #e7ece7;
+    --muted: #9cab9f;
+    --line: #35413a;
+    --accent: #6fbe8e;
+    --accent-ink: #10241a;
+    --accent-soft: #24382c;
+    --good: #7cc79a;
+    --good-soft: #223a2c;
+    --warn: #d9b36a;
+    --warn-soft: #3a3122;
+    --bad: #e08a7c;
+    --bad-soft: #402722;
+    --shadow: 0 1px 3px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f4;
+    --surface: #ffffff;
+    --surface-2: #eef1ec;
+    --ink: #1d2521;
+    --muted: #5c685f;
+    --line: #d8ded6;
+    --accent: #2e5f43;
+    --accent-ink: #ffffff;
+    --accent-soft: #e3ede5;
+    --good: #2e6b46;
+    --good-soft: #e0efe4;
+    --warn: #8a6215;
+    --warn-soft: #f5ecd6;
+    --bad: #9c3a2e;
+    --bad-soft: #f6e2de;
+    --shadow: 0 1px 3px rgba(29,37,33,.08), 0 4px 16px rgba(29,37,33,.06);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  h1, h2, .dealname {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    text-wrap: balance;
+  }
+  h1 { font-size: 2rem; margin: 0 0 4px; letter-spacing: -.01em; }
+  .tagline { color: var(--muted); margin: 0 0 24px; max-width: 62ch; }
+
+  .howto {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px 18px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+  .howto summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 10px 0;
+    color: var(--accent);
+  }
+  .howto ol { margin: 0 0 14px; padding-left: 22px; max-width: 70ch; }
+  .howto li { margin-bottom: 8px; }
+  .howto li strong { color: var(--ink); }
+
+  /* ---------- summary table ---------- */
+  .summary {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .summary h2 {
+    font-size: 1.1rem;
+    margin: 0;
+    padding: 14px 18px 10px;
+  }
+  .summary .scroller { overflow-x: auto; }
+  .summary table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 640px;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary th, .summary td {
+    text-align: right;
+    padding: 10px 18px;
+    border-top: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .summary th { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-top: none; font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; }
+  .summary th:hover { color: var(--accent); }
+  .summary tr.incomplete td { color: var(--muted); }
+  .summary th:first-child, .summary td:first-child { text-align: left; }
+  .summary td:first-child { font-weight: 600; }
+  .summary tr.best td { background: var(--good-soft); }
+  .summary .eff { font-weight: 700; color: var(--accent); }
+
+  .plate {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 5px;
+    padding: 2px 9px;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-left: 8px;
+    vertical-align: 1px;
+  }
+
+  /* ---------- toolbar ---------- */
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 9px 16px;
+  }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------- modals ---------- */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(12, 17, 14, .55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 40; padding: 16px;
+  }
+  .overlay[hidden] { display: none; }
+  .modal {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    width: min(720px, 100%);
+    max-height: 88vh;
+    overflow: auto;
+    padding: 20px 22px;
+  }
+  .modal h2 { font-size: 1.25rem; margin: 0 0 6px; }
+  .modal .sub { color: var(--muted); font-size: .88rem; margin: 0 0 14px; max-width: 62ch; }
+  .modal textarea.big { min-height: 220px; font-size: .9rem; }
+  .modal .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
+  .pgrid .field { margin-bottom: 8px; }
+  .foundnote { font-size: .85rem; margin: 0 0 14px; padding: 9px 12px; border-radius: 8px; background: var(--accent-soft); }
+  .copymsg { font-size: .85rem; color: var(--good); font-weight: 600; }
+
+  /* ---------- deal cards ---------- */
+  .deals {
+    display: flex;
+    gap: 18px;
+    overflow-x: auto;
+    align-items: flex-start;
+    padding: 2px 2px 18px;
+  }
+  .card {
+    flex: 0 0 370px;
+    max-width: 88vw;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 18px 18px 16px;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+  .dealname {
+    width: 100%;
+    font-size: 1.15rem;
+    font-weight: 700;
+    border: none;
+    border-bottom: 1.5px dashed var(--line);
+    background: transparent;
+    color: var(--ink);
+    padding: 2px 0 4px;
+  }
+  .dealname::placeholder { color: var(--muted); font-weight: 400; }
+  .vehicle {
+    width: 100%;
+    border: none;
+    border-bottom: 1.5px dashed var(--line);
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: .9rem;
+    padding: 4px 0;
+    margin-bottom: 12px;
+  }
+  .del {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 4px 6px;
+  }
+  .del:hover { color: var(--bad); }
+
+  .group { margin-bottom: 4px; }
+  .group-label {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    font-weight: 700;
+    margin: 14px 0 6px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 3px; }
+  .field .hint { font-size: .75rem; color: var(--muted); margin-top: 3px; min-height: 0; }
+  .field .hint.warnhint { color: var(--warn); }
+  .inputwrap { display: flex; align-items: center; gap: 6px; }
+  .inputwrap .pre { color: var(--muted); font-size: .9rem; }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 8px 10px;
+  }
+  textarea { resize: vertical; min-height: 54px; }
+
+  /* ---------- computed panel ---------- */
+  .computed {
+    margin-top: 16px;
+    background: var(--accent-soft);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .completeness { font-size: .8rem; color: var(--muted); margin-bottom: 10px; }
+  .completeness .bar {
+    height: 5px; border-radius: 3px; background: var(--line);
+    overflow: hidden; margin-top: 5px;
+  }
+  .completeness .fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .25s ease; }
+  .completeness .fill.bad { background: var(--bad); }
+  .stillmissing { font-size: .8rem; color: var(--bad); font-weight: 600; margin: 6px 0 2px; }
+  .shortflag { color: var(--bad); font-weight: 700; }
+  .foundnote.warn { background: var(--bad-soft); color: var(--bad); }
+  @media (prefers-reduced-motion: reduce) { .completeness .fill { transition: none; } }
+
+  .bigcost { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .bigcost .num {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .bigcost .per { color: var(--muted); font-size: .9rem; }
+  .biglabel { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; margin-bottom: 2px; }
+
+  .pill {
+    display: inline-block;
+    border-radius: 99px;
+    padding: 3px 12px;
+    font-size: .8rem;
+    font-weight: 700;
+    margin: 8px 0 4px;
+  }
+  .pill.great { background: var(--good-soft); color: var(--good); }
+  .pill.fair  { background: var(--warn-soft); color: var(--warn); }
+  .pill.high  { background: var(--bad-soft);  color: var(--bad); }
+  .pill.na    { background: var(--surface-2); color: var(--muted); }
+
+  .facts { margin: 10px 0 0; padding: 0; list-style: none; font-size: .88rem; }
+  .facts li {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 5px 0; border-top: 1px dashed var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  .facts li span:first-child { color: var(--muted); }
+  .facts li span:last-child { font-weight: 600; text-align: right; }
+
+  .mathcheck { margin-top: 10px; font-size: .85rem; border-radius: 8px; padding: 9px 12px; }
+  .mathcheck.ok   { background: var(--good-soft); color: var(--good); }
+  .mathcheck.off  { background: var(--warn-soft); color: var(--warn); }
+  .mathcheck.low  { background: var(--good-soft); color: var(--good); }
+  .mathcheck.na   { background: var(--surface-2); color: var(--muted); }
+
+  .followup { margin-top: 12px; width: 100%; }
+
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+  }
+  .empty p { max-width: 46ch; margin: 0 auto 18px; }
+
+  footer.note { color: var(--muted); font-size: .82rem; max-width: 72ch; margin-top: 26px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>Lee's Lease Ledger</h1>
+  <p class="tagline">Type in each dealer's numbers as their emails come in. The ledger figures out what every offer <em>really</em> costs per month, checks the dealer's math, and lines the deals up side by side.</p>
+
+  <details class="howto">
+    <summary>How to use this (three steps)</summary>
+    <ol>
+      <li><strong>Send your email</strong> to each dealer. It asks for exactly the numbers this page needs.</li>
+      <li><strong>When a quote arrives, click "Paste a dealer's email"</strong> and paste the whole reply — the ledger pulls out every number it can find, and you check them before anything is saved. (You can also click "Add a deal" and type the numbers in yourself.) If a dealer left things out, open their card and click <strong>"Draft a follow-up email"</strong> — it writes the request for exactly what's missing.</li>
+      <li><strong>Compare the big green number</strong> — "True monthly cost." It folds in the amount due at signing, the disposition fee, and your remaining VW payments, so it's the one fair number to compare across dealers. Lowest wins.</li>
+    </ol>
+  </details>
+
+  <div class="summary" id="summary" hidden>
+    <h2>Side by side</h2>
+    <div class="scroller"><table>
+      <thead><tr>
+        <th data-key="dealer">Dealer</th><th data-key="vehicle">Vehicle</th><th data-key="monthly">Monthly</th><th data-key="das">Due at signing</th><th data-key="term">Term</th><th data-key="eff">True monthly cost</th><th data-key="filled">Numbers in</th>
+      </tr></thead>
+      <tbody id="summaryBody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="primary" id="addBtn">+ Add a deal</button>
+    <button id="pasteBtn">Paste a dealer's email</button>
+    <button id="exampleBtn">See an example</button>
+  </div>
+
+  <div class="deals" id="deals"></div>
+
+  <div class="empty" id="empty">
+    <p>No deals yet. When the first dealer replies to your email, click <strong>“Add a deal”</strong> and copy their numbers in — or peek at an example first.</p>
+    <button class="primary" id="emptyAdd">+ Add a deal</button>
+  </div>
+
+  <footer class="note">
+    Everything you type is saved on this device automatically — you can close the page and come back.
+    “True monthly cost” = (due at signing + remaining monthly payments + disposition fee + any old-lease payments you cover) ÷ months in the term. It assumes the first month's payment is part of the amount due at signing, the way your email requests.
+    This is a comparison tool, not financial advice — the contract numbers are the ones that count.
+  </footer>
+</div>
+
+<div class="overlay" id="pasteModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pasteTitle">
+    <div id="pasteStep1">
+      <h2 id="pasteTitle">Paste the dealer's email</h2>
+      <p class="sub">Copy the dealer's whole reply and paste it below. The ledger will pull out every number it can find — you'll check them before anything is saved.</p>
+      <textarea class="big" id="pasteText" placeholder="Paste the full email here…" aria-label="Dealer email text"></textarea>
+      <div class="actions">
+        <button class="primary" id="parseBtn">Read the email</button>
+        <button id="pasteCancel">Cancel</button>
+      </div>
+    </div>
+    <div id="pasteStep2" hidden>
+      <h2>Check what it found</h2>
+      <p class="sub">Compare these against the dealer's email and fix anything wrong or missing. Itemized lists (fees, incentives) are worth a second look — the ledger may have caught only the first line.</p>
+      <div class="foundnote" id="foundNote"></div>
+      <div class="pgrid" id="parseGrid"></div>
+      <div class="field" style="margin-top: 10px">
+        <label for="parseVwmode">How the email says your 3 VW payments are handled</label>
+        <select id="parseVwmode">
+          <option value="unknown">It doesn't say</option>
+          <option value="covered">Dealer / VW covers them (pull-ahead or payoff)</option>
+          <option value="rolled">Rolled into the new lease</option>
+          <option value="ipay">I pay them myself</option>
+          <option value="wait">Delivery at my lease end</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="parseTarget">Where should these numbers go?</label>
+        <select id="parseTarget"></select>
+      </div>
+      <div class="actions">
+        <button class="primary" id="applyParse">Fill the deal card</button>
+        <button id="parseBack">Back</button>
+        <button id="pasteCancel2">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="emailModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="emailTitle">
+    <h2 id="emailTitle">Follow-up email</h2>
+    <p class="sub" id="emailSub">Written from what this card is still missing. Edit anything you like, then copy it into a reply to the dealer.</p>
+    <textarea class="big" id="emailText" aria-label="Follow-up email draft"></textarea>
+    <div class="actions">
+      <button class="primary" id="copyEmail">Copy to clipboard</button>
+      <span class="copymsg" id="copyMsg" hidden>Copied ✓</span>
+      <button id="emailClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORE_KEY = 'lease-ledger-v1';
+  var deals = [];
+  var uid = 1;
+
+  var FIELDS = [
+    'msrp','selling','term','miles','residual','mf','bank',
+    'incentives','fees','tax','das','monthly','disposition','vwmode','vwamt','notes'
+  ];
+  // the 12 numbers Lee's email demands
+  var REQUIRED = ['msrp','selling','term','miles','residual','mf','incentives','fees','tax','das','monthly','disposition'];
+  var SHORT_LABELS = {
+    msrp: 'MSRP', selling: 'selling price', term: 'term', miles: 'miles/year',
+    residual: 'residual', mf: 'money factor', incentives: 'incentives', fees: 'fees',
+    tax: 'tax', das: 'due at signing', monthly: 'monthly payment', disposition: 'disposition fee'
+  };
+
+  function num(v) {
+    if (v === null || v === undefined) return NaN;
+    var n = parseFloat(String(v).replace(/[$,%\s,]/g, ''));
+    return isFinite(n) ? n : NaN;
+  }
+  function usd(n, cents) {
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('en-US', { style: 'currency', currency: 'USD',
+      minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 });
+  }
+
+  function residualDollars(d) {
+    var r = num(d.residual), msrp = num(d.msrp);
+    if (!isFinite(r)) return NaN;
+    if (r <= 100) return isFinite(msrp) ? msrp * r / 100 : NaN;  // typed a percent
+    return r;                                                     // typed dollars
+  }
+
+  function vwCost(d) {
+    if (d.vwmode === 'ipay') { var a = num(d.vwamt); return isFinite(a) ? a : 0; }
+    return 0;
+  }
+
+  function compute(d) {
+    var out = {};
+    var msrp = num(d.msrp), selling = num(d.selling), term = num(d.term),
+        mf = num(d.mf), inc = num(d.incentives), tax = num(d.tax),
+        das = num(d.das), monthly = num(d.monthly), disp = num(d.disposition);
+    var rv = residualDollars(d);
+
+    out.filled = REQUIRED.filter(function (k) { return String(d[k] || '').trim() !== ''; }).length;
+
+    if (isFinite(das) && isFinite(monthly) && isFinite(term) && term > 0) {
+      var total = das + monthly * Math.max(term - 1, 0) + (isFinite(disp) ? disp : 0) + vwCost(d);
+      out.total = total;
+      out.eff = total / term;
+      if (isFinite(msrp) && msrp > 0) out.effPct = out.eff / msrp * 100;
+    }
+
+    if (isFinite(msrp) && isFinite(selling) && msrp > 0) out.discount = (msrp - selling) / msrp * 100;
+    if (isFinite(mf)) out.apr = mf * 2400;
+
+    // expected payment from the raw numbers (tax + any rolled-in VW payments capitalized; fees paid upfront)
+    if (isFinite(selling) && isFinite(rv) && isFinite(mf) && isFinite(term) && term > 0) {
+      var cap = selling - (isFinite(inc) ? inc : 0) + (isFinite(tax) ? tax : 0);
+      if (d.vwmode === 'rolled') { var ra = num(d.vwamt); cap += isFinite(ra) ? ra : 0; }
+      out.expected = (cap - rv) / term + (cap + rv) * mf;
+      if (isFinite(monthly)) out.delta = monthly - out.expected;
+    }
+
+    out.rvDollars = rv;
+    if (isFinite(rv) && isFinite(msrp) && msrp > 0) out.rvPct = rv / msrp * 100;
+    return out;
+  }
+
+  function verdict(effPct) {
+    if (!isFinite(effPct)) return null;
+    if (effPct <= 1.0)  return { cls: 'great', label: 'Great deal' };
+    if (effPct <= 1.2)  return { cls: 'great', label: 'Solid deal' };
+    if (effPct <= 1.45) return { cls: 'fair',  label: 'Fair — push harder' };
+    return { cls: 'high', label: 'Expensive for this car' };
+  }
+
+  /* ---------- persistence ---------- */
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(deals)); } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) deals = JSON.parse(raw) || [];
+    } catch (e) { deals = []; }
+    deals.forEach(function (d) {
+      d.id = uid++;
+      // migrate the old single "vehicle" field into the split fields
+      if (d.vehicle && !d.vyear && !d.vmake && !d.vmodel && !d.vtrim) {
+        var ym = String(d.vehicle).match(/\b(19|20)\d{2}\b/);
+        if (ym) d.vyear = ym[0];
+        d.vmodel = String(d.vehicle).replace(/\b(19|20)\d{2}\b/, '').trim();
+        delete d.vehicle;
+      }
+    });
+  }
+
+  /* ---------- card building ---------- */
+  var dealsEl = document.getElementById('deals');
+
+  function fieldHTML(key, label, opts) {
+    opts = opts || {};
+    var pre = opts.money ? '<span class="pre">$</span>' : '';
+    return '<div class="field"><label for="' + key + '_ID">' + label + '</label>' +
+      '<div class="inputwrap">' + pre +
+      '<input type="text" inputmode="decimal" id="' + key + '_ID" data-k="' + key + '"' +
+      (opts.ph ? ' placeholder="' + opts.ph + '"' : '') + '></div>' +
+      '<div class="hint" data-hint="' + key + '"></div></div>';
+  }
+
+  function cardHTML(d) {
+    var h = '';
+    h += '<div class="card-head"><input class="dealname" data-k="dealer" placeholder="Dealer name" aria-label="Dealer name">';
+    h += '<button class="del" title="Remove this deal" aria-label="Remove this deal">✕</button></div>';
+    h += fieldHTML('sales', 'Salesperson', { ph: 'who signed the email' });
+    h += '<div class="group-label">Vehicle</div><div class="row2">';
+    h += fieldHTML('vyear', 'Year', { ph: '2026' });
+    h += fieldHTML('vmake', 'Make', { ph: 'Hyundai' });
+    h += '</div><div class="row2">';
+    h += fieldHTML('vmodel', 'Model', { ph: 'IONIQ 5' });
+    h += fieldHTML('vtrim', 'Trim', { ph: 'SEL AWD' });
+    h += '</div>';
+
+    h += '<div class="group-label">Price</div><div class="row2">';
+    h += fieldHTML('msrp', 'MSRP', { money: true, ph: '48,000' });
+    h += fieldHTML('selling', 'Selling price', { money: true, ph: 'before incentives' });
+    h += '</div>';
+
+    h += '<div class="group-label">Structure</div><div class="row2">';
+    h += fieldHTML('term', 'Term (months)', { ph: '36' });
+    h += fieldHTML('miles', 'Miles per year', { ph: '7,500' });
+    h += '</div>';
+
+    h += '<div class="group-label">Bank numbers</div><div class="row2">';
+    h += fieldHTML('residual', 'Residual ($ or %)', { ph: '57 or 27,360' });
+    h += fieldHTML('mf', 'Money factor', { ph: '0.00125' });
+    h += '</div>';
+    h += fieldHTML('bank', 'Leasing bank', { ph: 'e.g. VW Credit' });
+
+    h += '<div class="group-label">Credits &amp; costs</div><div class="row2">';
+    h += fieldHTML('incentives', 'Incentives, total', { money: true, ph: 'all rebates' });
+    h += fieldHTML('fees', 'Fees, total', { money: true, ph: 'acq + doc + gov' });
+    h += '</div>';
+    h += fieldHTML('tax', 'VT tax capitalized', { money: true });
+
+    h += '<div class="group-label">Bottom line</div><div class="row2">';
+    h += fieldHTML('das', 'Due at signing', { money: true, ph: 'total, itemized' });
+    h += fieldHTML('monthly', 'Monthly payment', { money: true });
+    h += '</div>';
+    h += fieldHTML('disposition', 'Disposition fee at lease end', { money: true, ph: '395' });
+
+    h += '<div class="group-label">Your 3 remaining VW payments</div>';
+    h += '<div class="field"><select data-k="vwmode" aria-label="How the remaining VW payments are handled">' +
+         '<option value="unknown">Dealer hasn’t said yet</option>' +
+         '<option value="covered">Dealer / VW covers them (pull-ahead or payoff)</option>' +
+         '<option value="rolled">Rolled into the new lease</option>' +
+         '<option value="ipay">I pay them myself</option>' +
+         '<option value="wait">Delivery at my lease end (nothing owed twice)</option>' +
+         '</select></div>';
+    h += '<div class="field vwamt-field" hidden>' + fieldHTML('vwamt', 'Amount ($)', { money: true, ph: '1,170' }) + '</div>';
+
+    h += '<div class="field"><label>Notes (plate transfer confirmed? expiration date of offer?)</label>' +
+         '<textarea data-k="notes"></textarea></div>';
+
+    h += '<div class="computed">' +
+         '<div class="completeness"><span class="ctext"></span><div class="bar"><div class="fill"></div></div>' +
+         '<div class="stillmissing" hidden></div></div>' +
+         '<div class="biglabel">True monthly cost</div>' +
+         '<div class="bigcost"><span class="num">—</span><span class="per">everything in, per month</span></div>' +
+         '<div class="pillslot"></div>' +
+         '<ul class="facts">' +
+         '<li><span>Quoted payment</span><span data-f="monthly">—</span></li>' +
+         '<li><span>Discount off MSRP</span><span data-f="discount">—</span></li>' +
+         '<li><span>Money factor as interest</span><span data-f="apr">—</span></li>' +
+         '<li><span>Residual</span><span data-f="rv">—</span></li>' +
+         '</ul>' +
+         '<div class="mathcheck na">Math check: fill in selling price, residual, money factor, term and payment.</div>' +
+         '<button class="followup" type="button">Draft a follow-up email</button>' +
+         '</div>';
+    return h;
+  }
+
+  function buildCard(d) {
+    var el = document.createElement('div');
+    el.className = 'card';
+    el.dataset.id = d.id;
+    el.innerHTML = cardHTML(d).replace(/_ID/g, '_' + d.id);
+
+    el.querySelectorAll('[data-k]').forEach(function (inp) {
+      var k = inp.dataset.k;
+      if (d[k] !== undefined && d[k] !== null) inp.value = d[k];
+      inp.addEventListener('input', function () {
+        d[k] = inp.value;
+        refresh(d, el);
+        save();
+      });
+      if (inp.tagName === 'SELECT') inp.addEventListener('change', function () {
+        d[k] = inp.value;
+        // pre-fill Lee's ~$1,170 the moment a mode that needs an amount is picked
+        if (k === 'vwmode' && (inp.value === 'ipay' || inp.value === 'rolled') &&
+            String(d.vwamt || '').trim() === '') {
+          d.vwamt = '1,170';
+          var amtInp = el.querySelector('[data-k="vwamt"]');
+          if (amtInp) amtInp.value = d.vwamt;
+        }
+        refresh(d, el); save();
+      });
+    });
+
+    el.querySelector('.followup').addEventListener('click', function () {
+      openEmailModal(d);
+    });
+
+    el.querySelector('.del').addEventListener('click', function () {
+      var name = d.dealer ? '“' + d.dealer + '”' : 'this deal';
+      if (!confirm('Remove ' + name + '? This can’t be undone.')) return;
+      deals = deals.filter(function (x) { return x.id !== d.id; });
+      el.remove();
+      save();
+      renderSummary();
+      toggleEmpty();
+    });
+
+    refresh(d, el);
+    return el;
+  }
+
+  function refresh(d, el) {
+    var c = compute(d);
+
+    // VW amount field visibility
+    var showAmt = d.vwmode === 'ipay' || d.vwmode === 'rolled';
+    el.querySelector('.vwamt-field').hidden = !showAmt;
+
+    // completeness + red flag for anything missing
+    el.querySelector('.ctext').textContent = c.filled + ' of 12 numbers received' +
+      (c.filled === 12 ? ' — complete quote ✓' : '');
+    var fill = el.querySelector('.fill');
+    fill.style.width = (c.filled / 12 * 100) + '%';
+    fill.classList.toggle('bad', c.filled < 12);
+    var missLabels = REQUIRED.filter(function (k) { return String(d[k] || '').trim() === ''; })
+      .map(function (k) { return SHORT_LABELS[k]; });
+    if (!d.vwmode || d.vwmode === 'unknown') missLabels.push('how your VW payments are handled');
+    var missEl = el.querySelector('.stillmissing');
+    missEl.hidden = missLabels.length === 0;
+    missEl.textContent = missLabels.length ? '⚑ Still missing: ' + missLabels.join(', ') : '';
+
+    // big number + verdict
+    el.querySelector('.bigcost .num').textContent = isFinite(c.eff) ? usd(c.eff) : '—';
+    var slot = el.querySelector('.pillslot');
+    var v = verdict(c.effPct);
+    if (v) slot.innerHTML = '<span class="pill ' + v.cls + '">' + v.label + ' · ' + c.effPct.toFixed(2) + '% of MSRP per month</span>';
+    else if (isFinite(c.eff)) slot.innerHTML = '<span class="pill na">Add MSRP to rate this deal</span>';
+    else slot.innerHTML = '<span class="pill na">Needs: due at signing, monthly payment, term</span>';
+
+    // facts
+    el.querySelector('[data-f="monthly"]').textContent = isFinite(num(d.monthly)) ? usd(num(d.monthly)) + '/mo' : '—';
+    el.querySelector('[data-f="discount"]').textContent = isFinite(c.discount)
+      ? (c.discount >= 0 ? c.discount.toFixed(1) + '% off' : 'over MSRP by ' + Math.abs(c.discount).toFixed(1) + '%') : '—';
+    el.querySelector('[data-f="apr"]').textContent = isFinite(c.apr) ? '≈ ' + c.apr.toFixed(2) + '% APR' : '—';
+    el.querySelector('[data-f="rv"]').textContent = isFinite(c.rvDollars)
+      ? usd(c.rvDollars) + (isFinite(c.rvPct) ? ' (' + c.rvPct.toFixed(0) + '%)' : '') : '—';
+
+    // money-factor sanity hint
+    var mfHint = el.querySelector('[data-hint="mf"]');
+    var mf = num(d.mf);
+    if (isFinite(mf) && mf >= 0.02) { mfHint.textContent = 'Money factors look like 0.00125 — double-check this one.'; mfHint.className = 'hint warnhint'; }
+    else { mfHint.textContent = ''; mfHint.className = 'hint'; }
+
+    // math check
+    var mc = el.querySelector('.mathcheck');
+    if (isFinite(c.delta)) {
+      if (Math.abs(c.delta) <= 12) {
+        mc.className = 'mathcheck ok';
+        mc.textContent = '✓ The quoted payment matches the math (within $12). The numbers hang together.';
+      } else if (c.delta > 12) {
+        mc.className = 'mathcheck off';
+        mc.textContent = '⚠ The quoted payment is about ' + usd(c.delta) + '/mo higher than these numbers produce. Ask the dealer to explain the difference — something is marked up or missing.';
+      } else {
+        mc.className = 'mathcheck low';
+        mc.textContent = 'The quoted payment is about ' + usd(-c.delta) + '/mo lower than the raw math — good, but confirm no number is missing from the quote.';
+      }
+    } else {
+      mc.className = 'mathcheck na';
+      mc.textContent = 'Math check: fill in selling price, residual, money factor, term and payment, and the ledger will verify the dealer’s arithmetic.';
+    }
+
+    renderSummary();
+  }
+
+  /* ---------- summary ---------- */
+  var sortKey = 'eff', sortDir = 1;
+  var TH_LABELS = {
+    dealer: 'Dealer', vehicle: 'Vehicle', monthly: 'Monthly', das: 'Due at signing',
+    term: 'Term', eff: 'True monthly cost', filled: 'Numbers in'
+  };
+
+  function sortVal(r, key) {
+    var n;
+    switch (key) {
+      case 'dealer': return (r.d.dealer || '').trim().toLowerCase() || null;
+      case 'vehicle': return vehicleStr(r.d).toLowerCase() || null;
+      case 'monthly': n = num(r.d.monthly); return isFinite(n) ? n : null;
+      case 'das': n = num(r.d.das); return isFinite(n) ? n : null;
+      case 'term': n = num(r.d.term); return isFinite(n) ? n : null;
+      case 'eff': return isFinite(r.c.eff) ? r.c.eff : null;
+      case 'filled': return r.c.filled;
+    }
+    return null;
+  }
+
+  function renderSummary() {
+    var box = document.getElementById('summary');
+    var body = document.getElementById('summaryBody');
+    if (deals.length < 2) { box.hidden = true; return; }
+    box.hidden = false;
+
+    var rows = deals.map(function (d) { return { d: d, c: compute(d) }; });
+    var withEff = rows.filter(function (r) { return isFinite(r.c.eff); });
+    var best = withEff.length
+      ? withEff.reduce(function (a, b) { return b.c.eff < a.c.eff ? b : a; })
+      : null;
+
+    rows.sort(function (a, b) {
+      var va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;   // missing values always sink to the bottom
+      if (vb === null) return -1;
+      if (va < vb) return -sortDir;
+      if (va > vb) return sortDir;
+      return 0;
+    });
+
+    document.querySelectorAll('#summary th').forEach(function (th) {
+      var k = th.dataset.key;
+      th.textContent = TH_LABELS[k] + (k === sortKey ? (sortDir === 1 ? ' ▲' : ' ▼') : '');
+    });
+
+    body.innerHTML = rows.map(function (r) {
+      var d = r.d, c = r.c;
+      var isBest = r === best;
+      var cls = isBest ? 'best' : (c.filled < 12 ? 'incomplete' : '');
+      return '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' +
+        '<td>' + esc(d.dealer || 'Unnamed dealer') + (isBest ? '<span class="plate">Best deal</span>' : '') + '</td>' +
+        '<td>' + esc(vehicleStr(d) || '—') + '</td>' +
+        '<td>' + usd(num(d.monthly)) + '</td>' +
+        '<td>' + usd(num(d.das)) + '</td>' +
+        '<td>' + (isFinite(num(d.term)) ? num(d.term) + ' mo' : '—') + '</td>' +
+        '<td class="eff">' + (isFinite(c.eff) ? usd(c.eff) : '—') + '</td>' +
+        '<td>' + (c.filled < 12 ? '<span class="shortflag">⚑ ' + c.filled + '/12</span>' : c.filled + '/12 ✓') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  document.querySelectorAll('#summary th').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var k = th.dataset.key;
+      if (sortKey === k) { sortDir = -sortDir; } else { sortKey = k; sortDir = 1; }
+      renderSummary();
+    });
+  });
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+
+  /* ---------- add / example / empty ---------- */
+  function addDeal(data) {
+    var d = data || {};
+    d.id = uid++;
+    if (!d.vwmode) d.vwmode = 'unknown';
+    deals.push(d);
+    dealsEl.appendChild(buildCard(d));
+    save();
+    toggleEmpty();
+    return d;
+  }
+
+  function toggleEmpty() {
+    document.getElementById('empty').hidden = deals.length > 0;
+  }
+
+  document.getElementById('addBtn').addEventListener('click', function () { addDeal(); });
+  document.getElementById('emptyAdd').addEventListener('click', function () { addDeal(); });
+  document.getElementById('exampleBtn').addEventListener('click', function () {
+    addDeal({
+      dealer: 'Example Motors (sample)',
+      sales: 'Sam Rivera',
+      vyear: '2026', vmake: 'Hyundai', vmodel: 'IONIQ 5', vtrim: 'SEL AWD',
+      msrp: '52,000', selling: '47,500', term: '36', miles: '7,500',
+      residual: '55', mf: '0.00150', bank: 'Hyundai Motor Finance',
+      incentives: '9,500', fees: '1,320', tax: '2,850',
+      das: '1,765', monthly: '445', disposition: '400',
+      vwmode: 'covered',
+      notes: 'Sample numbers so you can see how the ledger works — delete this card any time.'
+    });
+  });
+
+  /* ---------- vehicle helper ---------- */
+  function vehicleStr(d) {
+    return ['vyear', 'vmake', 'vmodel', 'vtrim']
+      .map(function (k) { return String(d[k] || '').trim(); })
+      .filter(Boolean).join(' ');
+  }
+
+  function rebuildCard(d) {
+    var old = dealsEl.querySelector('.card[data-id="' + d.id + '"]');
+    var fresh = buildCard(d);
+    if (old) { dealsEl.replaceChild(fresh, old); } else { dealsEl.appendChild(fresh); }
+    return fresh;
+  }
+
+  /* ---------- dealer-email parser ---------- */
+  var MAKES = ['Volkswagen', 'Hyundai', 'Kia', 'Tesla', 'Toyota', 'Honda', 'Nissan',
+    'Chevrolet', 'Chevy', 'Ford', 'Subaru', 'Mazda', 'Audi', 'BMW', 'Mercedes-Benz',
+    'Mercedes', 'Volvo', 'Polestar', 'Rivian', 'Lucid', 'Genesis', 'Acura', 'Lexus',
+    'Cadillac', 'GMC', 'Jeep', 'Mini', 'Porsche', 'Mitsubishi', 'Dodge', 'Buick', 'VW'];
+  var BANKS = ['VW Credit', 'Volkswagen Credit', 'Hyundai Motor Finance', 'Hyundai Capital',
+    'Kia Finance', 'Kia Motors Finance', 'Toyota Financial', 'Honda Financial',
+    'Nissan Motor Acceptance', 'GM Financial', 'Ford Credit', 'Ally', 'Chase',
+    'U.S. Bank', 'US Bank', 'Santander', 'BMW Financial', 'Mercedes-Benz Financial',
+    'Volvo Car Financial', 'Bank of America'];
+
+  function moneyOn(line) {
+    var clean = function (s) { return s.replace(/[.,]+$/, ''); };
+    var m = line.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
+    if (m) return clean(m[1]);
+    m = line.match(/\b(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?)\b/);
+    if (m) return clean(m[1]);
+    m = line.match(/:\s*(\d{3,6}(?:\.\d{1,2})?)\b/);
+    return m ? clean(m[1]) : '';
+  }
+  // first money AFTER the keyword; falls back to anywhere on the line
+  function moneyAfter(line, kwRe) {
+    var m = line.match(kwRe);
+    if (!m) return '';
+    return moneyOn(line.slice(m.index + m[0].length)) || moneyOn(line);
+  }
+  // first money strictly AFTER the keyword; no fallback (for fields that
+  // often appear as asides on another field's line, e.g. "includes tax")
+  function moneyStrictAfter(line, kwRe) {
+    var m = line.match(kwRe);
+    if (!m) return '';
+    return moneyOn(line.slice(m.index + m[0].length));
+  }
+
+  function parseQuote(text) {
+    var v = {};
+    function put(k, val) { if (val && !v[k]) v[k] = val; }
+    var lines = String(text).split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+
+    lines.forEach(function (line) {
+      var l = line.toLowerCase();
+
+      if (/msrp|sticker/.test(l)) put('msrp', moneyAfter(line, /msrp|sticker(?:\s*price)?/i));
+      if (/(selling|sale|sales|discounted|vehicle)\s+price|cap(italized)?\s+cost/.test(l)) {
+        put('selling', moneyAfter(line, /(?:selling|sale|sales|discounted|vehicle)\s+price|cap(?:italized)?\s+cost/i));
+      }
+
+      if (/residual/.test(l)) {
+        var rd = line.match(/\$\s*([\d,]+)/);
+        var rp = line.match(/([\d.]+)\s*%/);
+        if (rd) put('residual', rd[1]);
+        else if (rp) put('residual', rp[1]);
+      }
+
+      if (/money\s*factor|\bmf\b|buy\s*rate|base\s*rate/.test(l)) {
+        var mf = line.match(/(0?\.\d{4,6})/);
+        if (mf) put('mf', mf[1]);
+      }
+
+      if (!v.term) {
+        var t = line.match(/\b(\d{2})\s*-?\s*mo(?:nths?|\.|\b)/i);
+        if (!t && /term/.test(l)) t = line.match(/\b(\d{2})\b/);
+        if (t) { var tn = parseInt(t[1], 10); if (tn >= 12 && tn <= 60) v.term = t[1]; }
+      }
+
+      if (/mile/.test(l) && !v.miles) {
+        var nums = line.match(/\b\d{1,2},?\d{3}\b/g) || [];
+        for (var i = 0; i < nums.length; i++) {
+          var n = parseFloat(nums[i].replace(/,/g, ''));
+          if (n >= 4000 && n <= 30000) { v.miles = nums[i]; break; }
+        }
+      }
+
+      // money-labeled fields, each anchored to its own keyword so one line
+      // ("due at signing $2,100, monthly payment $598") can fill two boxes
+      if (/due at (signing|delivery)|drive[ -]?off|total due|cash due|due today|out the door/.test(l)) {
+        put('das', moneyAfter(line, /due at (?:signing|delivery)|drive[ -]?off|total due|cash due|due today|out the door/i));
+      }
+      if (/disposition/.test(l)) put('disposition', moneyAfter(line, /disposition(?:\s*fee)?/i));
+
+      if (!/due at|disposition/.test(l)) {
+        if (/incentive|rebate|lease cash|bonus cash|loyalty cash|customer cash/.test(l)) {
+          var im = moneyAfter(line, /incentives?|rebates?|lease cash|bonus cash|loyalty cash|customer cash/i);
+          if (im) { if (/total/.test(l)) { v.incentives = im; } else if (!v.incentives) { v.incentives = im; } }
+        } else if (/total fees|fees total|acquisition|doc(umentation)? fee|dealer fee|registration|title fee|government fee/.test(l)) {
+          if (/total fees|fees total/.test(l)) v._feesTotal = moneyOn(line) || v._feesTotal;
+          var am = line.match(/acquisition[^$]*\$\s*([\d,]+)/i); if (am && !v._acq) v._acq = am[1];
+          var dm = line.match(/(?:doc(?:umentation)?\s*(?:fee)?|dealer\s+fee)[^$]*\$\s*([\d,]+)/i); if (dm && !v._doc) v._doc = dm[1];
+          var gm = line.match(/(?:registration|title|government|plate)[^$]*\$\s*([\d,]+)/i); if (gm && !v._gov) v._gov = gm[1];
+        }
+      }
+
+      // tax and monthly appear as asides on other lines ("includes tax"),
+      // so only take a figure that follows the keyword — never the line's first
+      if (/\btax/.test(l)) put('tax', moneyStrictAfter(line, /tax(?:es)?(?:\s+(?:amount|capitalized))?/i));
+
+      if (!v.monthly) {
+        var pm = line.match(/\$\s*([\d,]+(?:\.\d{1,2})?)\s*(?:\/|per\s*|a\s*)mo/i);
+        if (pm) { v.monthly = pm[1].replace(/[.,]+$/, ''); }
+        else if (/monthly payment|monthly:/.test(l)) {
+          var mm = moneyStrictAfter(line, /monthly payments?|monthly:/i);
+          if (mm) v.monthly = mm;
+        }
+      }
+    });
+
+    if (!v.fees) {
+      if (v._feesTotal) { v.fees = v._feesTotal; }
+      else {
+        var s = 0, any = false;
+        [v._acq, v._doc, v._gov].forEach(function (x) {
+          var n = num(x); if (isFinite(n)) { s += n; any = true; }
+        });
+        if (any) v.fees = String(Math.round(s));
+      }
+    }
+    delete v._feesTotal; delete v._acq; delete v._doc; delete v._gov;
+
+    var full = String(text);
+    var fl = full.toLowerCase();
+
+    for (var b = 0; b < BANKS.length; b++) {
+      if (fl.indexOf(BANKS[b].toLowerCase()) !== -1) { v.bank = BANKS[b]; break; }
+    }
+
+    if (/pull[- ]?ahead/.test(fl) ||
+        /(cover|waive|pay(?:\s?off)?)[^.]{0,50}(remaining|last|final|3)[^.]{0,25}payment/.test(fl)) {
+      v.vwmode = 'covered';
+    } else if (/roll(ed|ing)?[^.]{0,30}(in|into)[^.]{0,20}(new\s)?lease/.test(fl)) {
+      v.vwmode = 'rolled';
+    }
+
+    var ym = full.match(/\b20(2[3-9]|3[0-3])\b/);
+    if (ym) v.vyear = ym[0];
+
+    // vehicle: find the make on a non-bank line, then split what follows
+    // into model vs trim using a known-trim vocabulary
+    var FINANCEY = /finance|financial|credit|bank|acceptance|lender|lessor/i;
+    var TRIMS = ['SE', 'SEL', 'SEL+', 'LIMITED', 'XLE', 'LE', 'XSE', 'SR', 'SR5', 'SV', 'SL',
+      'S', 'EX', 'LX', 'EX-L', 'GT', 'GT-LINE', 'WIND', 'LIGHT', 'AWD', 'RWD', 'FWD', '4WD',
+      'DUAL', 'LONG', 'RANGE', 'STANDARD', 'PERFORMANCE', 'PREMIUM', 'PLUS', 'PRO',
+      'ULTIMATE', 'TOURING', 'SPORT', 'PLATINUM', 'LARIAT', 'DENALI', 'N', 'N-LINE',
+      'LINE', 'EDITION', 'LAUNCH', 'CALLIGRAPHY', 'WILDERNESS', 'RESERVE'];
+    var STOPS = ['you', 'your', 'we', 'our', 'that', 'with', 'for', 'at', 'in', 'on', 'is',
+      'are', 'the', 'and', 'per', 'a', 'an', 'quote', 'lease', 'deal', 'here', 'below',
+      'as', 'to', 'from', 'it', 'this', 'about', 'asked'];
+    function walkModelTrim(afterText) {
+      if (/^\s*[.,;:!?)]/.test(afterText)) return null; // sentence ended at the make
+      var toks = afterText.replace(/\b(19|20)\d{2}\b/g, ' ').split(/\s+/)
+        .map(function (t) { return t.replace(/^[.,;:()"']+|[.,;:()"']+$/g, ''); })
+        .filter(Boolean);
+      if (!toks.length || !/[A-Za-z0-9]/.test(toks[0])) return null;
+      if (STOPS.indexOf(toks[0].toLowerCase()) !== -1) return null;
+      var modelT = [], trimT = [], inTrim = false;
+      for (var ti = 0; ti < toks.length; ti++) {
+        var tok = toks[ti];
+        var up = tok.toUpperCase();
+        if (!inTrim && STOPS.indexOf(tok.toLowerCase()) !== -1) break;
+        if (!inTrim && modelT.length && TRIMS.indexOf(up) !== -1) inTrim = true;
+        if (inTrim) {
+          if (TRIMS.indexOf(up) !== -1 || /^[A-Z0-9+.-]{1,10}$/.test(tok)) trimT.push(tok);
+          else break;
+        } else {
+          if (modelT.length >= 3) break;
+          modelT.push(tok);
+        }
+      }
+      if (!modelT.length) return null;
+      return { model: modelT.join(' '), trim: trimT.join(' ') };
+    }
+
+    for (var mk = 0; mk < MAKES.length && !v.vmodel; mk++) {
+      var reG = new RegExp('\\b' + MAKES[mk].replace('-', '\\-') + '\\b', 'gi');
+      for (var li = 0; li < lines.length && !v.vmodel; li++) {
+        if (!new RegExp('\\b' + MAKES[mk].replace('-', '\\-') + '\\b', 'i').test(lines[li])) continue;
+        if (!v.vmake) v.vmake = MAKES[mk];
+        if (FINANCEY.test(lines[li])) continue; // bank line, not the car
+        // a line can mention the make twice ("Burlington Kia … the 2026 Kia EV6");
+        // try each occurrence, preferring the one right after the model year
+        var best = null, m2;
+        reG.lastIndex = 0;
+        while ((m2 = reG.exec(lines[li])) !== null) {
+          var cand = walkModelTrim(lines[li].slice(m2.index + m2[0].length));
+          if (!cand) continue;
+          var pre = lines[li].slice(Math.max(0, m2.index - 6), m2.index);
+          if (/(19|20)\d{2}\s*$/.test(pre)) { best = cand; break; }
+          if (!best) best = cand;
+        }
+        if (best) {
+          v.vmodel = best.model;
+          if (best.trim) v.vtrim = best.trim;
+        }
+      }
+    }
+
+    // dealer name: "<Name> Motors / Auto Group", "<Make> of <Town>", "<Name> <Make>"
+    // [ \t] separators only — a match must never span a line break
+    var makesAlt = MAKES.join('|').replace('-', '\\-');
+    var capWord = "[A-Z][\\w'&.-]*";
+    var capSeq = capWord + "(?:[ \\t]+" + capWord + "){0,3}";
+    var dealerRes = [
+      new RegExp('\\b(' + capSeq + '[ \\t]+(?:Motors?|Auto[ \\t]?Group|Automotive|Auto[ \\t]?Mall|Auto[ \\t]?Center|Dealerships?|Autos?|Cars))\\b'),
+      new RegExp('\\b((?:' + capWord + '[ \\t]+){0,2}(?:' + makesAlt + ')[ \\t]+of[ \\t]+[A-Z][A-Za-z]+)\\b'),
+      new RegExp('\\b(' + capSeq + '[ \\t]+(?:' + makesAlt + '))\\b')
+    ];
+    for (var dr = 0; dr < dealerRes.length; dr++) {
+      var dm2 = full.match(dealerRes[dr]);
+      if (dm2) { v.dealer = dm2[1]; break; }
+    }
+
+    // salesperson: "this is <Name>", the name under the sign-off, or a From: header
+    var namePat = "[A-Z][A-Za-z'.-]+(?:[ \\t]+[A-Z][A-Za-z'.-]+){0,2}";
+    var sm = full.match(new RegExp("(?:this is|my name is|i'm|i am)\\s+(" + namePat + ")"));
+    if (sm) v.sales = sm[1];
+    if (!v.sales) {
+      for (var si = 0; si < lines.length - 1; si++) {
+        if (/^(best|best regards|warm regards|kind regards|regards|thanks|thank you|thanks again|sincerely|cheers|respectfully|talk soon)[,!.]*$/i.test(lines[si])) {
+          var cand = lines[si + 1].trim();
+          if (new RegExp('^' + namePat + '$').test(cand) && !FINANCEY.test(cand)) { v.sales = cand; break; }
+        }
+      }
+    }
+    if (!v.sales) {
+      var fm = full.match(new RegExp('^From:\\s*(' + namePat + ')', 'm'));
+      if (fm) v.sales = fm[1];
+    }
+
+    return v;
+  }
+
+  /* ---------- paste modal ---------- */
+  var PARSE_FIELDS = [
+    ['dealer', 'Dealer name'], ['sales', 'Salesperson'], ['vyear', 'Year'], ['vmake', 'Make'],
+    ['vmodel', 'Model'], ['vtrim', 'Trim'],
+    ['msrp', 'MSRP ($)'], ['selling', 'Selling price ($)'],
+    ['term', 'Term (months)'], ['miles', 'Miles per year'],
+    ['residual', 'Residual ($ or %)'], ['mf', 'Money factor'], ['bank', 'Leasing bank'],
+    ['incentives', 'Incentives, total ($)'], ['fees', 'Fees, total ($)'],
+    ['tax', 'Tax capitalized ($)'], ['das', 'Due at signing ($)'],
+    ['monthly', 'Monthly payment ($)'], ['disposition', 'Disposition fee ($)']
+  ];
+
+  var pasteModal = document.getElementById('pasteModal');
+  var emailModal = document.getElementById('emailModal');
+
+  function showPasteStep(step) {
+    document.getElementById('pasteStep1').hidden = step !== 1;
+    document.getElementById('pasteStep2').hidden = step !== 2;
+  }
+
+  document.getElementById('pasteBtn').addEventListener('click', function () {
+    document.getElementById('pasteText').value = '';
+    showPasteStep(1);
+    pasteModal.hidden = false;
+    document.getElementById('pasteText').focus();
+  });
+
+  document.getElementById('parseBtn').addEventListener('click', function () {
+    var parsed = parseQuote(document.getElementById('pasteText').value);
+    var grid = document.getElementById('parseGrid');
+    grid.innerHTML = PARSE_FIELDS.map(function (f) {
+      return '<div class="field"><label for="pf_' + f[0] + '">' + f[1] + '</label>' +
+        '<input type="text" id="pf_' + f[0] + '" data-pk="' + f[0] + '"></div>';
+    }).join('');
+    PARSE_FIELDS.forEach(function (f) {
+      if (parsed[f[0]]) document.getElementById('pf_' + f[0]).value = parsed[f[0]];
+    });
+    document.getElementById('parseVwmode').value = parsed.vwmode || 'unknown';
+
+    var missing = REQUIRED.filter(function (k) { return !parsed[k]; });
+    var found = 12 - missing.length;
+    var note = document.getElementById('foundNote');
+    if (found === 0) {
+      note.className = 'foundnote warn';
+      note.textContent = 'No numbers recognized — the quote may be an attachment or image. You can still type the numbers below.';
+    } else if (missing.length) {
+      note.className = 'foundnote warn';
+      note.textContent = '⚑ Found ' + found + ' of the 12 numbers — not in the email (or not recognized): ' +
+        missing.map(function (k) { return SHORT_LABELS[k]; }).join(', ') +
+        '. Check the boxes against the email; anything truly missing, demand with a follow-up email.';
+    } else {
+      note.className = 'foundnote';
+      note.textContent = 'Found all 12 numbers. Check each one against the email before filling the card.';
+    }
+
+    var sel = document.getElementById('parseTarget');
+    sel.innerHTML = '<option value="new">Start a new deal card</option>' +
+      deals.map(function (d) {
+        return '<option value="' + d.id + '">Update: ' + esc(d.dealer || 'Unnamed deal') + '</option>';
+      }).join('');
+
+    showPasteStep(2);
+  });
+
+  document.getElementById('applyParse').addEventListener('click', function () {
+    var vals = {};
+    PARSE_FIELDS.forEach(function (f) {
+      var x = document.getElementById('pf_' + f[0]).value.trim();
+      if (x) vals[f[0]] = x;
+    });
+    var vw = document.getElementById('parseVwmode').value;
+    var targetVal = document.getElementById('parseTarget').value;
+
+    var d;
+    if (targetVal === 'new') {
+      if (vw !== 'unknown') vals.vwmode = vw;
+      d = addDeal(vals);
+    } else {
+      d = deals.filter(function (x) { return String(x.id) === targetVal; })[0];
+      if (!d) return;
+      Object.keys(vals).forEach(function (k) { d[k] = vals[k]; });
+      if (vw !== 'unknown') d.vwmode = vw;
+      rebuildCard(d);
+      save();
+    }
+    pasteModal.hidden = true;
+    var card = dealsEl.querySelector('.card[data-id="' + d.id + '"]');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  });
+
+  document.getElementById('parseBack').addEventListener('click', function () { showPasteStep(1); });
+  document.getElementById('pasteCancel').addEventListener('click', function () { pasteModal.hidden = true; });
+  document.getElementById('pasteCancel2').addEventListener('click', function () { pasteModal.hidden = true; });
+
+  /* ---------- follow-up email ---------- */
+  var ITEM_LABELS = {
+    msrp: 'MSRP',
+    selling: 'Selling price, before incentives',
+    term: 'Term, in months',
+    miles: 'Annual mileage of the quote',
+    residual: 'Residual value, in dollars and percent',
+    mf: 'Money factor — base/buy rate',
+    bank: 'The leasing bank',
+    incentives: 'All incentives and rebates, itemized',
+    fees: 'All fees, itemized: acquisition, dealer/doc, government, registration (as a plate transfer)',
+    tax: 'Total Vermont Purchase and Use Tax capitalized',
+    das: 'Total due at signing, itemized',
+    monthly: 'Monthly payment',
+    disposition: 'Disposition fee at lease end'
+  };
+
+  function draftEmail(d) {
+    var c = compute(d);
+    var veh = vehicleStr(d) || 'the vehicle we discussed';
+    var missing = REQUIRED.filter(function (k) { return String(d[k] || '').trim() === ''; });
+    if (String(d.bank || '').trim() === '') missing.push('bank');
+    var vwUnknown = !d.vwmode || d.vwmode === 'unknown';
+    var mismatch = isFinite(c.delta) && c.delta > 12;
+    var complete = missing.length === 0 && !vwUnknown && !mismatch;
+
+    var out = [];
+    out.push('Subject: ' + veh + ' lease quote — ' + (complete ? 'follow-up' : 'missing information'));
+    out.push('');
+    var first = String(d.sales || '').trim().split(/\s+/)[0];
+    out.push('Hello' + (first ? ' ' + first : '') + ',');
+    out.push('');
+    out.push('Thank you for the quote on the ' + veh + '.');
+
+    if (missing.length) {
+      out.push('');
+      out.push('Before I can consider it, I still need the following, in writing by email:');
+      missing.forEach(function (k) { out.push('- ' + ITEM_LABELS[k]); });
+    }
+
+    if (vwUnknown) {
+      out.push('');
+      out.push('Please also state in writing how my 3 remaining VW ID.4 payments (~$1,170 total) would be handled: pull-ahead or conquest program, dealer-paid payoff, or the amount capitalized into the new lease. Otherwise, please quote for delivery at my lease end.');
+    }
+
+    if (mismatch) {
+      out.push('');
+      out.push('One thing does not line up. Using the selling price, incentives, capitalized tax, residual and money factor you sent, a ' + (num(d.term) || '') + '-month payment works out to about ' + usd(c.expected) + '/month, but you quoted ' + usd(num(d.monthly)) + '/month — about ' + usd(c.delta) + ' more. Please explain the difference or send corrected figures.');
+    }
+
+    if (complete) {
+      out.push('');
+      out.push('Your quote included everything I asked for — thank you. I am comparing complete offers now and will respond promptly. If there is any room to improve the selling price or the money factor, now is the time to send your best numbers.');
+    }
+
+    out.push('');
+    out.push('As a reminder: all terms must be sent by email.');
+    out.push('');
+    out.push('Thank you,');
+    out.push('Lee Aura Bonamico');
+    return out.join('\n');
+  }
+
+  function openEmailModal(d) {
+    document.getElementById('emailText').value = draftEmail(d);
+    document.getElementById('emailSub').textContent =
+      (d.dealer ? 'For ' + d.dealer + '. ' : '') +
+      'Written from what this card is still missing. Edit anything you like, then copy it into a reply to the dealer.';
+    emailModal.hidden = false;
+  }
+
+  document.getElementById('copyEmail').addEventListener('click', function () {
+    var ta = document.getElementById('emailText');
+    var done = function () {
+      var msgEl = document.getElementById('copyMsg');
+      msgEl.hidden = false;
+      setTimeout(function () { msgEl.hidden = true; }, 2500);
+    };
+    var fallback = function () { ta.select(); document.execCommand('copy'); done(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ta.value).then(done, fallback);
+    } else { fallback(); }
+  });
+  document.getElementById('emailClose').addEventListener('click', function () { emailModal.hidden = true; });
+
+  [pasteModal, emailModal].forEach(function (ov) {
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.hidden = true; });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { pasteModal.hidden = true; emailModal.hidden = true; }
+  });
+
+  /* ---------- boot ---------- */
+  load();
+  deals.forEach(function (d) { dealsEl.appendChild(buildCard(d)); });
+  toggleEmpty();
+  renderSummary();
+})();
+</script>
+</body>
+</html>
